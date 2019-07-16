@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>拼豆图片生成器</title>
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <input type="file" id="imageChooser" accept="image/png, image/jpeg, image/gif" />
+    <br />
+    <canvas id="sourceCanvas"></canvas>
+    <br />
+    <canvas id="destCanvas"></canvas>
+</body>
+
+<script type="text/javascript">
+    var pixelSize = 20,//马赛克像素尺寸（放大倍数）
+        pieceSize = 48;//单块拼板容纳的拼豆数
+
+    var onLoad = function () {
+        var sourceCanvas = document.getElementById('sourceCanvas'),
+            sourceContext = sourceCanvas.getContext('2d'),
+            destCanvas = document.getElementById('destCanvas'),
+            destContext = destCanvas.getContext('2d');
+        sourceCanvas.width = 0;
+        sourceCanvas.height = 0;
+        destCanvas.width = 0;
+        destCanvas.height = 0;
+
+        let imageChooser = document.getElementById('imageChooser');
+        imageChooser.onchange = function (e) {
+            if (e.target.files.length <= 0) return;
+            let imageFile = e.target.files[0];
+
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+                var image = new Image();
+                image.src = e.target.result;
+                image.onload = function (e) {
+                    sourceCanvas.width = this.width;
+                    sourceCanvas.height = this.height;
+                    sourceContext.drawImage(this, 0, 0);
+                    trimCanvas(sourceCanvas);
+                    showLargeImage(sourceCanvas, destCanvas);
+                }
+                // 清空图片上传框的值
+                imageChooser.value = '';
+            };
+
+            reader.readAsDataURL(imageFile);
+        };
+    };
+
+    //去除canvas边缘的透明像素
+    function trimCanvas(canvas) {
+        let ctx = canvas.getContext('2d'),
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height),
+            bound = {
+                top: null,
+                left: null,
+                right: null,
+                bottom: null
+            };
+
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            if (imageData.data[i + 3] !== 0) {
+                let x = (i / 4) % canvas.width;
+                let y = ~~((i / 4) / canvas.width);
+
+                if (bound.top === null) {
+                    bound.top = y;
+                }
+
+                if (bound.left === null) {
+                    bound.left = x;
+                } else if (x < bound.left) {
+                    bound.left = x;
+                }
+
+                if (bound.right === null) {
+                    bound.right = x;
+                } else if (bound.right < x) {
+                    bound.right = x;
+                }
+
+                if (bound.bottom === null) {
+                    bound.bottom = y;
+                } else if (bound.bottom < y) {
+                    bound.bottom = y;
+                }
+            }
+        }
+
+        //取出裁剪图片的宽高
+        let trimHeight = bound.bottom - bound.top,
+            trimWidth = bound.right - bound.left,
+            trimmedImage = ctx.getImageData(bound.left, bound.top, trimWidth, trimHeight);
+
+        canvas.width = trimWidth;
+        canvas.height = trimHeight;
+        ctx.putImageData(trimmedImage, 0, 0);
+    }
+
+    //生成马赛克大图
+    function showLargeImage(sourceCanvas, destCanvas) {
+        let sourceCtx = sourceCanvas.getContext('2d'),
+            destCtx = destCanvas.getContext('2d'),
+            imageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+
+        destCanvas.width = sourceCanvas.width * (pixelSize + 1);
+        destCanvas.height = sourceCanvas.height * (pixelSize + 1);
+        destCtx.font = (~~(pixelSize / 2) + 2) + 'px monospace';
+        destCtx.strokeStyle = '#000';
+        destCtx.textBaseline = 'middle';
+        destCtx.textAlign = 'center';
+        //逐像素读取原图并绘制大图
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            //绘制边框（只有右边和下边）
+            let x = (i / 4) % sourceCanvas.width;
+            let y = ~~((i / 4) / sourceCanvas.width);
+            destCtx.beginPath();
+            //比实际尺寸减0.5像素是由于canvas的绘图方式，防止出现半像素
+            destCtx.moveTo(x * (pixelSize + 1) + pixelSize + 0.5, y * (pixelSize + 1) - 0.5);
+            destCtx.lineTo(x * (pixelSize + 1) + pixelSize + 0.5, y * (pixelSize + 1) + pixelSize + 0.5);
+            destCtx.lineTo(x * (pixelSize + 1) - 0.5, y * (pixelSize + 1) + pixelSize + 0.5);
+            destCtx.stroke();
+
+            //读取颜色，如果透明则跳过
+            let a = imageData.data[i + 3];
+            if (a == 0) continue;
+
+            let r = imageData.data[i];
+            let g = imageData.data[i + 1];
+            let b = imageData.data[i + 2];
+
+            //绘制大图
+            //todo:计算颜色
+            destCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+            destCtx.fillRect(x * (pixelSize + 1), y * (pixelSize + 1), pixelSize, pixelSize);
+
+            //写文字
+            destCtx.fillStyle = r + g + b > 384 ? '#000' : '#FFF';//浅色黑字，深色白字
+            destCtx.fillText(r, x * (pixelSize + 1) + ~~(pixelSize / 2), y * (pixelSize + 1) + ~~(pixelSize / 2));
+
+        }
+    }
+
+    //十六进制颜色转rgb数值
+    function hexToRgb(hex) {
+        let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    //原生js实现jQuery的ready，详见https://www.sitepoint.com/jquery-document-ready-plain-javascript/
+    if (document.readyState === "complete" || (document.readyState !== "loading" && !document.documentElement.doScroll)) {
+        onLoad();
+    } else {
+        document.addEventListener("DOMContentLoaded", onLoad);
+    }
+</script>
+
+</html>
