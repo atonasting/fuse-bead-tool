@@ -8,46 +8,58 @@
     <meta name="author" content="">
     <title>拼豆图片生成器</title>
     <link href="css/style.css" rel="stylesheet">
+    <script src="js/palette.js"></script>
 </head>
 
 <body>
     <input type="file" id="imageChooser" accept="image/png, image/jpeg, image/gif" />
     <br />
-    <canvas id="sourceCanvas"></canvas>
+    <canvas id="originalCanvas"></canvas>
+    <canvas id="paletteCanvas"></canvas>
     <br />
-    <canvas id="destCanvas"></canvas>
+    <canvas id="largeCanvas"></canvas>
 </body>
 
 <script type="text/javascript">
     var pixelSize = 20,//马赛克像素尺寸（放大倍数）
-        pieceSize = 48;//单块拼板容纳的拼豆数
+        pieceSize = 48,//单块拼板容纳的拼豆数
+        paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
+        similarColorCache = new Map();//与实际颜色最相近的调色板颜色缓存
 
     var onLoad = function () {
-        var sourceCanvas = document.getElementById('sourceCanvas'),
-            sourceContext = sourceCanvas.getContext('2d'),
-            destCanvas = document.getElementById('destCanvas'),
-            destContext = destCanvas.getContext('2d');
-        sourceCanvas.width = 0;
-        sourceCanvas.height = 0;
-        destCanvas.width = 0;
-        destCanvas.height = 0;
+        var originalCanvas = document.getElementById('originalCanvas'),//原始图片canvas
+            originalContext = originalCanvas.getContext('2d'),
+            paletteCanvas = document.getElementById('paletteCanvas'),//调色板预处理图片canvas
+            paletteContext = paletteCanvas.getContext('2d'),
+            largeCanvas = document.getElementById('largeCanvas'),//大图canvas
+            largeContext = largeCanvas.getContext('2d');
+        originalCanvas.width = 0, originalCanvas.height = 0;
+        paletteCanvas.width = 0, paletteCanvas.height = 0;
+        largeCanvas.width = 0, largeCanvas.height = 0;
 
         let imageChooser = document.getElementById('imageChooser');
         imageChooser.onchange = function (e) {
             if (e.target.files.length <= 0) return;
             let imageFile = e.target.files[0];
-
             var reader = new FileReader();
             reader.onload = function (e) {
-                sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+                originalContext.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
                 var image = new Image();
                 image.src = e.target.result;
                 image.onload = function (e) {
-                    sourceCanvas.width = this.width;
-                    sourceCanvas.height = this.height;
-                    sourceContext.drawImage(this, 0, 0);
-                    trimCanvas(sourceCanvas);
-                    showLargeImage(sourceCanvas, destCanvas);
+                    //重加载图片后清空缓存
+                    similarColorCache = new Map();
+
+                    originalCanvas.width = this.width;
+                    originalCanvas.height = this.height;
+                    originalContext.drawImage(this, 0, 0);
+                    trimCanvas(originalCanvas);
+                    console.time('show palette canvas');
+                    toPaletteColor(originalCanvas, paletteCanvas);
+                    console.timeEnd('show palette canvas');
+                    console.time('show large canvas');
+                    showLargeImage(paletteCanvas, largeCanvas);
+                    console.timeEnd('show large canvas');
                 }
                 // 清空图片上传框的值
                 imageChooser.value = '';
@@ -107,6 +119,37 @@
         ctx.putImageData(trimmedImage, 0, 0);
     }
 
+    //将canvas颜色输出为最相近的调色板颜色
+    function toPaletteColor(sourceCanvas, destCanvas) {
+        let sourceCtx = sourceCanvas.getContext('2d'),
+            destCtx = destCanvas.getContext('2d'),
+            imageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+
+        //逐像素读取原图并寻找颜色值
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            //读取颜色，如果透明则跳过
+            let a = imageData.data[i + 3];
+            if (a == 0) continue;
+
+            let r = imageData.data[i];
+            let g = imageData.data[i + 1];
+            let b = imageData.data[i + 2];
+
+            let x = (i / 4) % sourceCanvas.width;
+            let y = ~~((i / 4) / sourceCanvas.width);
+
+            //绘制调色板图
+            let similarColor = findSimilarColor(r, g, b);
+            imageData.data[i] = similarColor.r;
+            imageData.data[i + 1] = similarColor.g;
+            imageData.data[i + 2] = similarColor.b;
+        }
+
+        destCanvas.width = sourceCanvas.width;
+        destCanvas.height = sourceCanvas.height;
+        destCtx.putImageData(imageData, 0, 0);
+    }
+
     //生成马赛克大图
     function showLargeImage(sourceCanvas, destCanvas) {
         let sourceCtx = sourceCanvas.getContext('2d'),
@@ -139,26 +182,86 @@
             let g = imageData.data[i + 1];
             let b = imageData.data[i + 2];
 
-            //绘制大图
-            //todo:计算颜色
+            //绘制大像素块
             destCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
             destCtx.fillRect(x * (pixelSize + 1), y * (pixelSize + 1), pixelSize, pixelSize);
 
             //写文字
             destCtx.fillStyle = r + g + b > 384 ? '#000' : '#FFF';//浅色黑字，深色白字
-            destCtx.fillText(r, x * (pixelSize + 1) + ~~(pixelSize / 2), y * (pixelSize + 1) + ~~(pixelSize / 2));
-
+            let color = paletteMap.get(rgbToHex(r, g, b));
+            if (!color) {
+                console.log(rgbToHex(r, g, b));
+            }
+            destCtx.fillText(color ? color.name : 'Err', x * (pixelSize + 1) + ~~(pixelSize / 2), y * (pixelSize + 1) + ~~(pixelSize / 2));
         }
+    }
+
+    //寻找一个颜色最相近的调色板色值
+    function findSimilarColor(r, g, b) {
+        let hex = rgbToHex(r, g, b);
+        //首先查找缓存
+        if (similarColorCache.has(hex)) {
+            return similarColorCache.get(hex);
+        }
+
+        let minDistance = 584970;//最小色差值（初始值为纯黑和纯白的色差，使用colorDistance(0,0,0,255,255,255)计算而得）
+        let minColor = null;//最小值对应的颜色
+        for (let color of paletteMap.values()) {
+            let distance = colorDistance(color.r, color.g, color.b, r, g, b);
+            if (distance == 0) {//颜色相等直接返回
+                similarColorCache.set(hex, color);//写入缓存
+                return color;
+            }
+            if (distance < minDistance) {
+                minDistance = distance;
+                minColor = color;
+            }
+        }
+
+        similarColorCache.set(hex, minColor);//写入缓存
+        return minColor;
+    }
+
+    //调色板数据生成动态对象以便查询
+    function generatePaletteMap(palette) {
+        let map = new Map();
+        for (let i = 0; i < palette.length; i++) {
+            let rgb = hexToRgb(palette[i].color);
+            map.set(palette[i].color, {
+                name: palette[i].name,
+                r: rgb.r,
+                g: rgb.g,
+                b: rgb.b,
+            });
+        }
+        return map;
     }
 
     //十六进制颜色转rgb数值
     function hexToRgb(hex) {
-        let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        let result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
+            b: parseInt(result[3], 16),
         } : null;
+    }
+
+    //rgb数值转十六进制颜色
+    function rgbToHex(r, g, b) {
+        let rhex = r.toString(16),
+            ghex = g.toString(16),
+            bhex = b.toString(16);
+        return (rhex.length == 1 ? "0" + rhex : rhex) + (ghex.length == 1 ? "0" + ghex : ghex) + (bhex.length == 1 ? "0" + bhex : bhex);
+    }
+
+    //颜色差别公式，简化版，参考https://stackoverflow.com/a/9085524
+    function colorDistance(r1, g1, b1, r2, g2, b2) {
+        let rmean = (r1 + r2) / 2,
+            rd = r1 - r2,
+            gd = g1 - g2,
+            bd = b1 - b2;
+        return (((512 + rmean) * rd * rd) >> 8) + 4 * gd * gd + (((767 - rmean) * bd * bd) >> 8);
     }
 
     //原生js实现jQuery的ready，详见https://www.sitepoint.com/jquery-document-ready-plain-javascript/
