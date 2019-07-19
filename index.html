@@ -3,20 +3,66 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拼豆图片生成器</title>
+    <link rel="stylesheet" href="bootstrap-4.3.1/css/bootstrap.min.css">
     <link href="css/style.css" rel="stylesheet">
     <script src="js/palette.js"></script>
 </head>
 
 <body>
-    <input type="file" id="imageChooser" accept="image/png, image/jpeg, image/gif" />
-    <br />
-    <canvas id="originalCanvas"></canvas>
-    <canvas id="paletteCanvas"></canvas>
-    <br />
+    <div class="card">
+        <div class="card-header">
+            上传图片
+        </div>
+        <div class="card-body">
+            <input type="file" id="imageChooser" accept="image/png, image/jpeg, image/gif" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    原始图片
+                </div>
+                <div class="card-body">
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    换色图片
+                </div>
+                <div class="card-body">
+                    <canvas id="paletteCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            图片切块
+        </div>
+        <div class="card-body">
+            <table id='sliceImageContainer' class='table-bordered'>
+            </table>
+            <button id='showFullImageButton' class="btn btn-light btn-block">显示全图</button>
+        </div>
+    </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <button class="btn btn-link" data-toggle="collapse" data-target="#collapseColorSum" aria-expanded="false"
+                aria-controls="collapseColorSum">
+                颜色统计
+            </button>
+        </div>
+        <div id="collapseColorSum" class="card-collapse collapse">
+            <div class="card-body" id="colorSum"></div>
+        </div>
+    </div>
     <canvas id="largeCanvas"></canvas>
 </body>
 
@@ -24,15 +70,16 @@
     var pixelSize = 20,//马赛克像素尺寸（放大倍数）
         pieceSize = 48,//单块拼板容纳的拼豆数
         paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
-        similarColorCache = new Map();//与实际颜色最相近的调色板颜色缓存
+        similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
+        fullPicData = new Array();//存储全图的数组
 
     var onLoad = function () {
         var originalCanvas = document.getElementById('originalCanvas'),//原始图片canvas
-            originalContext = originalCanvas.getContext('2d'),
+            originalCtx = originalCanvas.getContext('2d'),
             paletteCanvas = document.getElementById('paletteCanvas'),//调色板预处理图片canvas
-            paletteContext = paletteCanvas.getContext('2d'),
+            paletteCtx = paletteCanvas.getContext('2d'),
             largeCanvas = document.getElementById('largeCanvas'),//大图canvas
-            largeContext = largeCanvas.getContext('2d');
+            largeCtx = largeCanvas.getContext('2d');
         originalCanvas.width = 0, originalCanvas.height = 0;
         paletteCanvas.width = 0, paletteCanvas.height = 0;
         largeCanvas.width = 0, largeCanvas.height = 0;
@@ -43,29 +90,32 @@
             let imageFile = e.target.files[0];
             var reader = new FileReader();
             reader.onload = function (e) {
-                originalContext.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+                originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
                 var image = new Image();
                 image.src = e.target.result;
                 image.onload = function (e) {
-                    //重加载图片后清空缓存
+                    //重加载图片后清空缓存与大图数据
                     similarColorCache = new Map();
+                    fullPicData = new Array();
 
                     originalCanvas.width = this.width;
                     originalCanvas.height = this.height;
-                    originalContext.drawImage(this, 0, 0);
+                    originalCtx.drawImage(this, 0, 0);
                     trimCanvas(originalCanvas);
-                    console.time('show palette canvas');
                     toPaletteColor(originalCanvas, paletteCanvas);
-                    console.timeEnd('show palette canvas');
-                    console.time('show large canvas');
-                    showLargeImage(paletteCanvas, largeCanvas);
-                    console.timeEnd('show large canvas');
+                    sliceCanvasToImage(paletteCanvas);
+
+                    showFullLargeImage(paletteCanvas, largeCanvas);
                 }
                 // 清空图片上传框的值
                 imageChooser.value = '';
             };
 
             reader.readAsDataURL(imageFile);
+        };
+
+        document.getElementById('showFullImageButton').onclick = function (e) {
+            showFullLargeImage(paletteCanvas, largeCanvas);
         };
     };
 
@@ -143,6 +193,7 @@
             imageData.data[i] = similarColor.r;
             imageData.data[i + 1] = similarColor.g;
             imageData.data[i + 2] = similarColor.b;
+            imageData.data[i + 3] = 255;//处理后一律变成不透明色
         }
 
         destCanvas.width = sourceCanvas.width;
@@ -150,23 +201,73 @@
         destCtx.putImageData(imageData, 0, 0);
     }
 
-    //生成马赛克大图
-    function showLargeImage(sourceCanvas, destCanvas) {
-        let sourceCtx = sourceCanvas.getContext('2d'),
-            destCtx = destCanvas.getContext('2d'),
-            imageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+    //将canvas分割为小图并输出为可点击的image集合
+    function sliceCanvasToImage(canvas) {
+        let ctx = canvas.getContext('2d'),
+            rowCount = Math.ceil(canvas.height / pieceSize),//分割行数
+            colCount = Math.ceil(canvas.width / pieceSize);//分割列数
 
-        destCanvas.width = sourceCanvas.width * (pixelSize + 1);
-        destCanvas.height = sourceCanvas.height * (pixelSize + 1);
+        //生成table和image标签
+        let tableHtml = "";
+        for (let y = 0; y < rowCount; y++) {
+            tableHtml += "<tr>";
+            for (let x = 0; x < colCount; x++) {
+                tableHtml += "<td><img id='sliceImage-" + y + "_" + x + "' /></td>";
+            }
+            tableHtml += "</tr>";
+        }
+        document.getElementById('sliceImageContainer').innerHTML = tableHtml;
+
+        //生成临时Canvas用于转换分割小图
+        let tempCanvas = document.createElement('canvas'),
+            tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = pieceSize;
+        tempCanvas.height = pieceSize;
+
+        fullPicData = new Array(rowCount);
+        for (let y = 0; y < rowCount; y++) {
+            fullPicData[y] = new Array(colCount);
+            for (let x = 0; x < colCount; x++) {
+                tempCtx.clearRect(0, 0, pieceSize, pieceSize);
+                //如果宽高超出canvas则减小
+                let width = (x + 1 * pieceSize) > canvas.width ? canvas.width - x * pieceSize : pieceSize;
+                let height = (y + 1 * pieceSize) > canvas.height ? canvas.height - y * pieceSize : pieceSize;
+                let imageData = ctx.getImageData(x * pieceSize, y * pieceSize, width, height);
+                fullPicData[y][x] = imageData;
+
+                tempCtx.putImageData(imageData, 0, 0);
+                let tempImageURL = tempCanvas.toDataURL("image/png");
+                let img = document.getElementById("sliceImage-" + y + "_" + x);
+                img.src = tempImageURL;
+                img.onclick = function () { showLargeImage(fullPicData[y][x], width, height, largeCanvas); };
+            }
+        }
+    }
+
+    //生成全图的马赛克大图
+    function showFullLargeImage(sourceCanvas, destCanvas) {
+        let imageData = sourceCanvas.getContext('2d').getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+        showLargeImage(imageData, sourceCanvas.width, sourceCanvas.height, destCanvas);
+    }
+
+    //生成马赛克大图
+    function showLargeImage(imageData, width, height, destCanvas) {
+        let destCtx = destCanvas.getContext('2d');
+
+        destCanvas.width = width * (pixelSize + 1);
+        destCanvas.height = height * (pixelSize + 1);
         destCtx.font = (~~(pixelSize / 2) + 2) + 'px monospace';
         destCtx.strokeStyle = '#000';
         destCtx.textBaseline = 'middle';
         destCtx.textAlign = 'center';
+
+        let colorSum = new Map();//大图颜色统计
+        let totolBeadCount = 0;//总拼豆数
         //逐像素读取原图并绘制大图
         for (let i = 0; i < imageData.data.length; i += 4) {
             //绘制边框（只有右边和下边）
-            let x = (i / 4) % sourceCanvas.width;
-            let y = ~~((i / 4) / sourceCanvas.width);
+            let x = (i / 4) % width;
+            let y = ~~((i / 4) / width);
             destCtx.beginPath();
             //比实际尺寸减0.5像素是由于canvas的绘图方式，防止出现半像素
             destCtx.moveTo(x * (pixelSize + 1) + pixelSize + 0.5, y * (pixelSize + 1) - 0.5);
@@ -177,6 +278,8 @@
             //读取颜色，如果透明则跳过
             let a = imageData.data[i + 3];
             if (a == 0) continue;
+
+            totolBeadCount++;
 
             let r = imageData.data[i];
             let g = imageData.data[i + 1];
@@ -189,11 +292,33 @@
             //写文字
             destCtx.fillStyle = r + g + b > 384 ? '#000' : '#FFF';//浅色黑字，深色白字
             let color = paletteMap.get(rgbToHex(r, g, b));
-            if (!color) {
-                console.log(rgbToHex(r, g, b));
+            //统计颜色或出错信息
+            if (color) {
+                let key = color.name + '#' + rgbToHex(r, g, b);//统计键值包含了名称和颜色
+                if (colorSum.has(key)) colorSum.set(key, colorSum.get(key) + 1);
+                else colorSum.set(key, 1);
+            }
+            else {
+                console.log('Error color: ' + rgbToHex(r, g, b));
+                if (colorSum.has('Err')) colorSum.set('Err', colorSum.get('Err') + 1);
+                else colorSum.set('Err', 1);
             }
             destCtx.fillText(color ? color.name : 'Err', x * (pixelSize + 1) + ~~(pixelSize / 2), y * (pixelSize + 1) + ~~(pixelSize / 2));
         }
+
+        //按颜色数量递减排序
+        let colorSumSorted = new Map([...colorSum.entries()].sort(function (a, b) {
+            return b[1] - a[1];
+        }));
+
+        let sumHtml = '<table class="table"><thead><th> </th><th>颜色</th><th>数量</th></thead><tbody>';
+        sumHtml += '<tr><td></td><td>总计</td><td>' + totolBeadCount + '</td></tr>';
+        for (let [color, count] of colorSumSorted) {
+            //color键分两部分：名称逗号色值
+            sumHtml += '<tr><td style="width: 20px; background:#' + color.split('#')[1] + '"> </td><td>' + color.split('#')[0] + '</td><td>' + count + '</td></tr>';
+        }
+        sumHtml += '</tbody></table>';
+        document.getElementById('colorSum').innerHTML = sumHtml;
     }
 
     //寻找一个颜色最相近的调色板色值
@@ -231,7 +356,7 @@
                 name: palette[i].name,
                 r: rgb.r,
                 g: rgb.g,
-                b: rgb.b,
+                b: rgb.b
             });
         }
         return map;
@@ -271,5 +396,8 @@
         document.addEventListener("DOMContentLoaded", onLoad);
     }
 </script>
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script src="js/popper.min.js"></script>
+<script src='bootstrap-4.3.1/js/bootstrap.min.js'></script>
 
 </html>
