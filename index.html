@@ -119,7 +119,7 @@
         };
     };
 
-    //去除canvas边缘的透明像素
+    //去除canvas边缘的透明和白色像素
     function trimCanvas(canvas) {
         let ctx = canvas.getContext('2d'),
             imageData = ctx.getImageData(0, 0, canvas.width, canvas.height),
@@ -131,7 +131,8 @@
             };
 
         for (let i = 0; i < imageData.data.length; i += 4) {
-            if (imageData.data[i + 3] !== 0) {
+            if (imageData.data[i + 3] !== 0
+                && (imageData.data[i] < 250 && imageData.data[i + 1] < 250 && imageData.data[i + 2] < 250)) {//透明或者近似白色都作为白色去掉
                 let x = (i / 4) % canvas.width;
                 let y = ~~((i / 4) / canvas.width);
 
