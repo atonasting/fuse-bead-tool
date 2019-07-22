@@ -71,18 +71,19 @@
             <canvas id="largeCanvas" style='width: 100%;'></canvas>
         </div>
     </div>
-    <div class="modal fade" id="colorInsteadModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog" role="document">
+    <div class="modal fade" id="colorModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">颜色替换</h5>
+                    <h5 class="modal-title">颜色处理</h5>
                 </div>
-                <div class="modal-body">
-                    ...
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
-                    <button type="button" class="btn btn-primary">执行替换</button>
+                <div class="modal-body ">
+                    <div class="container-fluid">
+                        1
+                        <hr />
+                        2
+                        <hr />
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,18 +95,19 @@
         pieceSize = 48,//单块拼板容纳的拼豆数
         paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
-        fullPicData = new Array();//存储全图的数组
+        fullPicData = new Array(),//存储全图的数组
+        currentSlicePic = { x: -1, y: -1 };//当前大图显示的切块坐标（如果是全图则为-1,-1）
 
     var isDragging = false,//大图canvas是否正在拖拽中
         startDragX = 0,//拖拽起点X
         startDragY = 0,//拖拽起点Y
         filterColor = '';//颜色筛选（只显示此颜色的色块）
 
-    var fullLargeCanvas,//完整大图Canvas，切出一部分显示在LargeCanvas
-        largeCanvasStartOffsetX = 0,//拖拽开始时的X坐标偏移
-        largeCanvasStartOffsetY = 0,//拖拽开始时的Y坐标偏移
-        largeCanvasOffsetX = 0,//大图显示的X坐标偏移
-        largeCanvasOffsetY = 0,//大图显示的Y坐标偏移
+    var backgroundLargeCanvas,//背景大图Canvas，切出一部分显示在LargeCanvas
+        backgroundCanvasStartOffsetX = 0,//拖拽开始时的背景X坐标偏移
+        backgroundCanvasStartOffsetY = 0,//拖拽开始时的背景Y坐标偏移
+        backgroundCanvasOffsetX = 0,//背景大图的X坐标偏移
+        backgroundCanvasOffsetY = 0,//背景大图的Y坐标偏移
         isDrawingLargeCanvas = false;//大图是否正在重绘中
 
     var rulerX1Canvas, rulerX2Canvas, rulerY1Canvas, rulerY2Canvas;//四个标尺的canvas
@@ -116,7 +118,11 @@
             largeCanvas = document.getElementById('largeCanvas');//大图canvas
         originalCanvas.width = 0, originalCanvas.height = 0;
         paletteCanvas.width = 0, paletteCanvas.height = 0;
-        largeCanvas.width = largeCanvas.offsetWidth, largeCanvas.height = largeCanvas.offsetWidth;
+        largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
+        //窗口重绘后重设canvas尺寸
+        window.addEventListener('resize', function (e) {
+            largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
+        }, false);
 
         let imageChooser = document.getElementById('imageChooser');
         imageChooser.onchange = function (e) {
@@ -140,7 +146,7 @@
                     toPaletteColor(originalCanvas, paletteCanvas);
                     sliceCanvasToImage(paletteCanvas);
 
-                    showFullLargeImage(paletteCanvas, largeCanvas);
+                    showFullLargeImage(paletteCanvas);
                 }
                 // 清空图片上传框的值
                 imageChooser.value = '';
@@ -150,13 +156,13 @@
         };
 
         document.getElementById('showFullImageButton').onclick = function (e) {
-            showFullLargeImage(paletteCanvas, largeCanvas);
+            showFullLargeImage(paletteCanvas);
         };
 
-        //大图鼠标事件
+        //大图鼠标和触摸事件
         {
             largeCanvas.onmousedown = function (e) {
-                if (e.buttons == 1 && fullLargeCanvas) {//点击左键并且在大图已加载情况下开始拖拽
+                if (e.buttons == 1 && backgroundLargeCanvas) {//点击左键并且在大图已加载情况下开始拖拽
                     startDragX = e.clientX;
                     startDragY = e.clientY;
                     isDragging = true;
@@ -165,13 +171,12 @@
             largeCanvas.onmousemove = function (e) {
                 if (isDragging && !isDrawingLargeCanvas) {
                     //计算大图偏移值
-                    largeCanvasOffsetX = largeCanvasStartOffsetX + startDragX - e.clientX;
-                    largeCanvasOffsetY = largeCanvasStartOffsetY + startDragY - e.clientY;
-                    if (largeCanvasOffsetX > fullLargeCanvas.width - largeCanvas.width) largeCanvasOffsetX = fullLargeCanvas.width - largeCanvas.width;
-                    if (largeCanvasOffsetX < 0) largeCanvasOffsetX = 0;
-                    if (largeCanvasOffsetY > fullLargeCanvas.height - largeCanvas.height) largeCanvasOffsetY = fullLargeCanvas.height - largeCanvas.height;
-                    if (largeCanvasOffsetY < 0) largeCanvasOffsetY = 0;
-                    console.log(startDragX - e.clientX, startDragY - e.clientY, largeCanvasOffsetX, largeCanvasOffsetY);
+                    backgroundCanvasOffsetX = backgroundCanvasStartOffsetX + startDragX - e.clientX;
+                    backgroundCanvasOffsetY = backgroundCanvasStartOffsetY + startDragY - e.clientY;
+                    if (backgroundCanvasOffsetX > backgroundLargeCanvas.width - largeCanvas.width) backgroundCanvasOffsetX = backgroundLargeCanvas.width - largeCanvas.width;
+                    if (backgroundCanvasOffsetX < 0) backgroundCanvasOffsetX = 0;
+                    if (backgroundCanvasOffsetY > backgroundLargeCanvas.height - largeCanvas.height) backgroundCanvasOffsetY = backgroundLargeCanvas.height - largeCanvas.height;
+                    if (backgroundCanvasOffsetY < 0) backgroundCanvasOffsetY = 0;
                     requestAnimationFrame(function () {
                         showPartLargeCanvas();
                     });
@@ -183,30 +188,92 @@
                         largeCanvasClick(e);
                     }
                     isDragging = false;
-                    largeCanvasStartOffsetX = largeCanvasOffsetX;
-                    largeCanvasStartOffsetY = largeCanvasOffsetY;
+                    backgroundCanvasStartOffsetX = backgroundCanvasOffsetX;
+                    backgroundCanvasStartOffsetY = backgroundCanvasOffsetY;
                 }
             };
             largeCanvas.onmouseout = function (e) {
                 isDragging = false;
-                largeCanvasStartOffsetX = largeCanvasOffsetX;
-                largeCanvasStartOffsetY = largeCanvasOffsetY;
+                backgroundCanvasStartOffsetX = backgroundCanvasOffsetX;
+                backgroundCanvasStartOffsetY = backgroundCanvasOffsetY;
             };
-            //点击事件
-            function largeCanvasClick(e) {
-                let realClickX = largeCanvasOffsetX + e.clientX - (pixelSize + 1),
-                    realClickY = largeCanvasOffsetY + e.clientY - (pixelSize + 1);
-                //如果点在标尺上则不触发事件
-                if (realClickX < 0 || realClickX > largeCanvas.width - (pixelSize + 1)
-                    || realClickY < 0 || realClickY > largeCanvas.height - (pixelSize + 1)) return;
 
-                //实际像素坐标
-                let realPointX = ~~(realClickX / (pixelSize + 1)),
-                    realPointY = ~~(realClickY / (pixelSize + 1));
-                    
-            }
+            //触摸事件触发鼠标事件（移动端）
+            largeCanvas.ontouchstart = function (e) {
+                e.preventDefault();
+                let touch = e.touches[0];
+                largeCanvas.dispatchEvent(new MouseEvent("mousedown", {
+                    buttons: 1,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                }));
+            };
+            largeCanvas.ontouchmove = function (e) {
+                e.preventDefault();
+                let touch = e.touches[0];
+                largeCanvas.dispatchEvent(new MouseEvent("mousemove", {
+                    buttons: 1,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                }));
+            };
+            largeCanvas.ontouchend = function (e) {
+                e.preventDefault();
+                let touch = e.changedTouches[0];
+                largeCanvas.dispatchEvent(new MouseEvent("mouseup", {
+                    buttons: 1,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                }));
+            };
+            largeCanvas.ontouchcancel = function (e) {
+                e.preventDefault();
+                largeCanvas.dispatchEvent(new MouseEvent("mouseout", {}));
+            };
         }
     };
+
+    //大图点击或触摸事件
+    function largeCanvasClick(e) {
+        //实际在全图上的点击坐标
+        let rect = largeCanvas.getBoundingClientRect();
+        let realClickX = e.clientX - rect.left + backgroundCanvasOffsetX - (pixelSize + 1),
+            realClickY = e.clientY - rect.top + backgroundCanvasOffsetY - (pixelSize + 1);
+        //如果点在标尺上则不触发事件
+        if (realClickX < 0 || realClickX > largeCanvas.width + backgroundCanvasOffsetX - 2 * (pixelSize + 1)
+            || realClickY < 0 || realClickY > largeCanvas.height + backgroundCanvasOffsetY - 2 * (pixelSize + 1)) return;
+
+        //实际像素坐标
+        let pointX = ~~(realClickX / (pixelSize + 1)),
+            pointY = ~~(realClickY / (pixelSize + 1));
+        let pointColor = getLargeCanvasColor(pointX, pointY);
+        //获得调色板颜色
+        let color = paletteMap.get(rgbToHex(pointColor.r, pointColor.g, pointColor.b));
+
+        $('#colorModal').modal('show');
+    }
+
+    //获取大图指定坐标点对应的图片色值
+    function getLargeCanvasColor(x, y) {
+        //根据当前显示的是全图还是切块，读取坐标所在rgb数据
+        let imageData, cursor;
+        if (currentSlicePic && currentSlicePic.x == -1) {
+            let ctx = paletteCanvas.getContext('2d');
+            imageData = ctx.getImageData(0, 0, paletteCanvas.width, paletteCanvas.height);
+            cursor = (y * paletteCanvas.width + x) * 4;
+        } else {
+            imageData = fullPicData[currentSlicePic.y][currentSlicePic.x];
+            cursor = (y * pieceSize + x) * 4;
+        }
+
+        if (imageData.data[cursor + 3] == 0) return null;
+
+        return {
+            r: imageData.data[cursor],
+            g: imageData.data[cursor + 1],
+            b: imageData.data[cursor + 2],
+        }
+    }
 
     //去除canvas边缘的透明和白色像素
     function trimCanvas(canvas) {
@@ -335,25 +402,29 @@
                 let tempImageURL = tempCanvas.toDataURL("image/png");
                 let img = document.getElementById("sliceImage-" + y + "_" + x);
                 img.src = tempImageURL;
-                img.onclick = function () { showLargeImage(fullPicData[y][x], width, height, largeCanvas); };
+                img.onclick = function () {
+                    currentSlicePic = { x: x, y: y };
+                    showLargeImage(fullPicData[y][x], width, height, largeCanvas);
+                };
             }
         }
     }
 
     //生成全图的马赛克大图
     function showFullLargeImage(sourceCanvas, destCanvas) {
+        currentSlicePic = { x: -1, y: -1 };
         let imageData = sourceCanvas.getContext('2d').getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-        showLargeImage(imageData, sourceCanvas.width, sourceCanvas.height, destCanvas);
+        showLargeImage(imageData, sourceCanvas.width, sourceCanvas.height);
     }
 
     //生成马赛克大图
     function showLargeImage(imageData, width, height) {
-        //首先绘制在fullLargeCanvas上，再根据偏移坐标绘到largeCanvas
-        fullLargeCanvas = document.createElement('canvas');
-        let fullLargeCtx = fullLargeCanvas.getContext('2d');
+        //首先绘制在backgroundLargeCanvas上，再根据偏移坐标绘到largeCanvas
+        backgroundLargeCanvas = document.createElement('canvas');
+        let fullLargeCtx = backgroundLargeCanvas.getContext('2d');
 
-        fullLargeCanvas.width = (width + 2) * (pixelSize + 1);//+2是留给标尺的空间
-        fullLargeCanvas.height = (height + 2) * (pixelSize + 1);
+        backgroundLargeCanvas.width = width * (pixelSize + 1);
+        backgroundLargeCanvas.height = height * (pixelSize + 1);
         fullLargeCtx.font = (~~(pixelSize / 2) + 2) + 'px monospace';
         fullLargeCtx.strokeStyle = '#000';
         fullLargeCtx.textBaseline = 'middle';
@@ -366,12 +437,12 @@
         fullLargeCtx.beginPath();
         for (let x = 1; x < width; x++) {
             fullLargeCtx.moveTo(x * (pixelSize + 1) - 0.5, 0);
-            fullLargeCtx.lineTo(x * (pixelSize + 1) - 0.5, fullLargeCanvas.height);
+            fullLargeCtx.lineTo(x * (pixelSize + 1) - 0.5, backgroundLargeCanvas.height);
             fullLargeCtx.stroke();
         }
         for (let y = 1; y < height; y++) {
             fullLargeCtx.moveTo(0, y * (pixelSize + 1) - 0.5);
-            fullLargeCtx.lineTo(fullLargeCanvas.width, y * (pixelSize + 1) - 0.5);
+            fullLargeCtx.lineTo(backgroundLargeCanvas.width, y * (pixelSize + 1) - 0.5);
             fullLargeCtx.stroke();
         }
 
@@ -395,7 +466,7 @@
 
             //绘制大像素块
             fullLargeCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-            fullLargeCtx.fillRect((x + 1) * (pixelSize + 1), (y + 1) * (pixelSize + 1), pixelSize, pixelSize);
+            fullLargeCtx.fillRect(x * (pixelSize + 1), y * (pixelSize + 1), pixelSize, pixelSize);
 
             //写文字
             fullLargeCtx.fillStyle = r + g + b > 384 ? '#000' : '#FFF';//浅色黑字，深色白字
@@ -412,12 +483,12 @@
                 if (colorSum.has('Err')) colorSum.set('Err', colorSum.get('Err') + 1);
                 else colorSum.set('Err', 1);
             }
-            fullLargeCtx.fillText(color ? color.name : 'Err', (x + 1) * (pixelSize + 1) + ~~(pixelSize * 0.5), (y + 1) * (pixelSize + 1) + ~~(pixelSize * 0.5));
+            fullLargeCtx.fillText(color ? color.name : 'Err', x * (pixelSize + 1) + ~~(pixelSize * 0.5), y * (pixelSize + 1) + ~~(pixelSize * 0.5));
         }
 
         //绘制部分图像到largeCanvas
-        largeCanvasStartOffsetX = 0, largeCanvasStartOffsetY = 0;
-        largeCanvasOffsetX = 0, largeCanvasOffsetY = 0;
+        backgroundCanvasStartOffsetX = 0, backgroundCanvasStartOffsetY = 0;
+        backgroundCanvasOffsetX = 0, backgroundCanvasOffsetY = 0;
         showPartLargeCanvas();
 
         //按颜色数量递减排序
@@ -439,10 +510,13 @@
     function showPartLargeCanvas() {
         if (isDrawingLargeCanvas) return;
         isDrawingLargeCanvas = true;
-        let fullLargeCtx = fullLargeCanvas.getContext('2d'),
+        let fullLargeCtx = backgroundLargeCanvas.getContext('2d'),
             largeCtx = largeCanvas.getContext('2d');
+
+        //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
+        largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
         //切图时要计算两边的标尺长度
-        let viewImageData = fullLargeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, largeCanvas.width - 2 * (pixelSize + 1), largeCanvas.height - 2 * (pixelSize + 1));
+        let viewImageData = fullLargeCtx.getImageData(backgroundCanvasOffsetX, backgroundCanvasOffsetY, largeCanvas.width - 2 * (pixelSize + 1), largeCanvas.height - 2 * (pixelSize + 1));
         largeCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
         //显示局部标尺
         showPartRulers();
@@ -521,13 +595,13 @@
             rulerX1Ctx = rulerX1Canvas.getContext('2d'), rulerX2Ctx = rulerX2Canvas.getContext('2d'),
             rulerY1Ctx = rulerY1Canvas.getContext('2d'), rulerY2Ctx = rulerY2Canvas.getContext('2d');
         //绘制上横标尺
-        largeCtx.putImageData(rulerX1Ctx.getImageData(largeCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, 0);
+        largeCtx.putImageData(rulerX1Ctx.getImageData(backgroundCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, 0);
         //绘制下横标尺
-        largeCtx.putImageData(rulerX2Ctx.getImageData(largeCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, largeCanvas.height - pixelSize - 1);
+        largeCtx.putImageData(rulerX2Ctx.getImageData(backgroundCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, largeCanvas.height - pixelSize - 1);
         //绘制左竖标尺
-        largeCtx.putImageData(rulerY1Ctx.getImageData(0, largeCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), 0, pixelSize + 1);
+        largeCtx.putImageData(rulerY1Ctx.getImageData(0, backgroundCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), 0, pixelSize + 1);
         //绘制右竖标尺
-        largeCtx.putImageData(rulerY2Ctx.getImageData(0, largeCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), largeCanvas.width - pixelSize - 1, pixelSize + 1);
+        largeCtx.putImageData(rulerY2Ctx.getImageData(0, backgroundCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), largeCanvas.width - pixelSize - 1, pixelSize + 1);
         //绘制四条标尺边线
         largeCtx.beginPath();
         largeCtx.moveTo(0, pixelSize + 1 - 0.5);
