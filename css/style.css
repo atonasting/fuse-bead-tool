@@ -4,3 +4,30 @@ body{
 canvas {
     border:  1px solid #060606;
 }
+#mainContent
+{
+    display: none;
+}
+#colorSelector>div{
+    display:inline-block;
+    width:24px;
+    height:24px;
+    text-align:center;
+    line-height:24px;
+    margin: 2px;
+    vertical-align: middle;
+    font: 12px monospace;
+    border: 1px solid #060606;
+    cursor: pointer;
+}
+#colorSelector>div.selected{
+    border: 3px solid #ff0000;
+}
+.remove-pixel-color-replace,.remove-color-replace{
+    color: #ff0000;
+    text-decoration: none;    
+}
+.remove-pixel-color-replace:hover,.remove-color-replace:hover{
+    color: #ff0000;
+    text-decoration: none;
+}
