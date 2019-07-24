@@ -38,10 +38,10 @@
             <div class="col">
                 <div class="card">
                     <div class="card-header">
-                        换色图片
+                        完整图片
                     </div>
                     <div class="card-body">
-                        <canvas id="paletteCanvas"></canvas>
+                        <canvas id="fullCanvas"></canvas>
                     </div>
                 </div>
             </div>
@@ -87,11 +87,11 @@
                         style="max-height:800px;">
                         <div class="px-4 py-3">
                             <h6 class="dropdown-header">全体颜色替换列表</h6>
-                            <table class="table table-sm" style="max-width: 112px;">
+                            <table class="table table-sm" style="max-width: 150px;">
                                 <thead>
                                     <th style="width: 36px;">旧</th>
                                     <th style="width: 36px;">新</th>
-                                    <th style="width: 36px;"></th>
+                                    <th style="width: 60px;"></th>
                                 </thead>
                                 <tbody id="colorReplaceTable">
                                 </tbody>
@@ -102,7 +102,7 @@
                                     <th>坐标</th>
                                     <th style="width: 36px;">旧</th>
                                     <th style="width: 36px;">新</th>
-                                    <th style="width: 36px;"></th>
+                                    <th style="width: 60px;"></th>
                                 </thead>
                                 <tbody id="pixelColorReplaceTable">
                                 </tbody>
@@ -114,7 +114,7 @@
                 </div>
             </div>
             <div class="card-body" style='padding: 0.25rem;'>
-                <canvas id="largeCanvas" style='width: 100%;'></canvas>
+                <canvas id="viewCanvas" style='width: 100%;'></canvas>
             </div>
         </div>
     </div>
@@ -149,34 +149,35 @@
         pieceSize = 48,//单块拼板容纳的拼豆数
         paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
-        fullPicData = new Array(),//存储全图的数组
-        currentSlicePic = null;//当前大图显示的切块坐标（如果是全图则为空）
+        paletteImageData = new Array(),//存储原始图片替换调色板颜色后的原图
+        sliceImages = new Array(),//存储所有切块图的二维数组
+        currentSliceImage = null;//当前显示的切块图位置（显示全图时为null）
 
     var selectedPixel = null,//当前选中的像素点（x,y,color)
         filterColor = '',//颜色筛选（只显示此颜色的色块）
         colorReplaceList = new Map(),//颜色替换列表
         pixelColorReplaceList = new Map();//颜色替换列表（单个像素）
 
-    var isDragging = false,//大图canvas是否正在拖拽中
+    var isDragging = false,//视图是否正在拖拽中
         startDragX = 0,//拖拽起点X
         startDragY = 0;//拖拽起点Y
 
-    var backgroundLargeCanvas,//背景大图Canvas，切出一部分显示在LargeCanvas
-        backgroundCanvasStartOffsetX = 0,//拖拽开始时的背景X坐标偏移
-        backgroundCanvasStartOffsetY = 0,//拖拽开始时的背景Y坐标偏移
-        backgroundCanvasOffsetX = 0,//背景大图的X坐标偏移
-        backgroundCanvasOffsetY = 0,//背景大图的Y坐标偏移
-        isDrawingLargeCanvas = false;//大图是否正在重绘中
+    var largeCanvas,//生成的马赛克大图Canvas，切出一部分显示在ViewCanvas
+        largeCanvasStartOffsetX = 0,//拖拽开始时的背景X坐标偏移
+        largeCanvasStartOffsetY = 0,//拖拽开始时的背景Y坐标偏移
+        largeCanvasOffsetX = 0,//背景大图的X坐标偏移
+        largeCanvasOffsetY = 0,//背景大图的Y坐标偏移
+        isDrawingViewCanvas = false;//视图是否正在绘制中
 
     var rulerX1Canvas, rulerX2Canvas, rulerY1Canvas, rulerY2Canvas;//四个标尺的canvas
 
     $().ready(function () {
         var originalCanvas = document.getElementById('originalCanvas'),//原始图片canvas
-            paletteCanvas = document.getElementById('paletteCanvas'),//调色板预处理图片canvas
-            largeCanvas = document.getElementById('largeCanvas');//大图canvas
+            fullCanvas = document.getElementById('fullCanvas'),//完整图片canvas
+            viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
         originalCanvas.width = 0, originalCanvas.height = 0;
-        paletteCanvas.width = 0, paletteCanvas.height = 0;
-        largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
+        fullCanvas.width = 0, fullCanvas.height = 0;
+        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
 
         //显示调色板选色块
         let colorSelector = document.getElementById('colorSelector');
@@ -192,8 +193,8 @@
         {
             //窗口重绘后重设canvas尺寸
             window.addEventListener('resize', function (e) {
-                largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
-                if (!$('#mainContent').is(":hidden")) refreshLargeImage();
+                viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
+                if (!$('#mainContent').is(":hidden")) refreshImage();
             }, false);
 
             //图片加载事件
@@ -205,23 +206,28 @@
                 let imageFile = e.target.files[0];
                 var reader = new FileReader();
                 reader.onload = function (e) {
-                    originalCtx = originalCanvas.getContext('2d');
+                    let originalCtx = originalCanvas.getContext('2d');
                     originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
                     var image = new Image();
                     image.src = e.target.result;
                     image.onload = function (e) {
-                        //重加载图片后清空缓存与大图数据
+                        //重加载图片后的完整操作步骤：
+                        //清空缓存和切块图片信息
                         similarColorCache = new Map();
-                        fullPicData = new Array();
+                        sliceImages = new Array();
 
+                        //绘制原图
                         originalCanvas.width = this.width;
                         originalCanvas.height = this.height;
                         originalCtx.drawImage(this, 0, 0);
+                        //切掉原图白色和透明边
                         trimCanvas(originalCanvas);
-                        toPaletteColor(originalCanvas, paletteCanvas);
-                        sliceCanvasToImage(paletteCanvas);
-
-                        showFullLargeImage(paletteCanvas);
+                        //将原图颜色换成最相近的调色板颜色
+                        toPaletteColor(originalCanvas, fullCanvas);
+                        //将完整图片切成图块
+                        sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
+                        //显示完整图片对应的马赛克大图
+                        showFullImageView();
                     }
                     // 清空图片上传框的值
                     imageChooser.value = '';
@@ -231,15 +237,15 @@
             };
 
             //点击显示全图
-            paletteCanvas.onclick = function (e) {
-                showFullLargeImage(paletteCanvas);
+            fullCanvas.onclick = function (e) {
+                showFullImageView();
             };
 
             //只显示某颜色按钮点击
             let showSingleColorButton = document.getElementById('showSingleColor');
             showSingleColorButton.onclick = function (e) {
                 filterColor = selectedPixel.color;
-                refreshLargeImage();
+                refreshImage();
                 $('#colorModal').modal('hide');
             }
 
@@ -259,7 +265,7 @@
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
                 pixelColorReplaceList.set(position.x + ',' + position.y, { old: selectedPixel.color, new: this.value });
                 refreshColorReplaceList();
-                refreshLargeImage();
+                refreshImage();
                 $('#colorModal').modal('hide');
             };
 
@@ -269,7 +275,7 @@
                 if (!this.value) return;
                 colorReplaceList.set(selectedPixel.color, this.value);
                 refreshColorReplaceList();
-                refreshLargeImage();
+                refreshImage();
                 $('#colorModal').modal('hide');
             };
 
@@ -288,106 +294,106 @@
                 colorReplaceList = new Map();
                 pixelColorReplaceList = new Map();
                 refreshColorReplaceList();
-                refreshLargeImage();
+                refreshImage();
             };
         }
 
-        //大图鼠标和触摸事件
+        //视图互动事件
         {
-            largeCanvas.onmousedown = function (e) {
-                if (e.buttons == 1 && backgroundLargeCanvas) {//点击左键并且在大图已加载情况下开始拖拽
+            viewCanvas.onmousedown = function (e) {
+                if (e.buttons == 1 && largeCanvas) {//点击左键并且在大图已加载情况下开始拖拽
                     startDragX = e.clientX;
                     startDragY = e.clientY;
                     isDragging = true;
                 }
             };
-            largeCanvas.onmousemove = function (e) {
-                if (isDragging && !isDrawingLargeCanvas) {
+            viewCanvas.onmousemove = function (e) {
+                if (isDragging && !isDrawingViewCanvas) {
                     //计算大图偏移值
-                    backgroundCanvasOffsetX = backgroundCanvasStartOffsetX + startDragX - e.clientX;
-                    backgroundCanvasOffsetY = backgroundCanvasStartOffsetY + startDragY - e.clientY;
-                    if (backgroundCanvasOffsetX > backgroundLargeCanvas.width - largeCanvas.width) backgroundCanvasOffsetX = backgroundLargeCanvas.width - largeCanvas.width;
-                    if (backgroundCanvasOffsetX < 0) backgroundCanvasOffsetX = 0;
-                    if (backgroundCanvasOffsetY > backgroundLargeCanvas.height - largeCanvas.height) backgroundCanvasOffsetY = backgroundLargeCanvas.height - largeCanvas.height;
-                    if (backgroundCanvasOffsetY < 0) backgroundCanvasOffsetY = 0;
+                    largeCanvasOffsetX = largeCanvasStartOffsetX + startDragX - e.clientX;
+                    largeCanvasOffsetY = largeCanvasStartOffsetY + startDragY - e.clientY;
+                    if (largeCanvasOffsetX > largeCanvas.width - viewCanvas.width) largeCanvasOffsetX = largeCanvas.width - viewCanvas.width;
+                    if (largeCanvasOffsetX < 0) largeCanvasOffsetX = 0;
+                    if (largeCanvasOffsetY > largeCanvas.height - viewCanvas.height) largeCanvasOffsetY = largeCanvas.height - viewCanvas.height;
+                    if (largeCanvasOffsetY < 0) largeCanvasOffsetY = 0;
                     requestAnimationFrame(function () {
-                        showPartLargeCanvas();
+                        showPartView();
                     });
                 }
             };
-            largeCanvas.onmouseup = function (e) {
+            viewCanvas.onmouseup = function (e) {
                 if (isDragging) {
                     if (e.clientX == startDragX && e.clientY == startDragY) {//如果未移动则触发点击事件
-                        largeCanvasClick(e);
+                        viewCanvasClick(e);
                     }
                 }
                 isDragging = false;
-                backgroundCanvasStartOffsetX = backgroundCanvasOffsetX;
-                backgroundCanvasStartOffsetY = backgroundCanvasOffsetY;
+                largeCanvasStartOffsetX = largeCanvasOffsetX;
+                largeCanvasStartOffsetY = largeCanvasOffsetY;
             };
-            largeCanvas.onmouseout = function (e) {
+            viewCanvas.onmouseout = function (e) {
                 isDragging = false;
-                backgroundCanvasStartOffsetX = backgroundCanvasOffsetX;
-                backgroundCanvasStartOffsetY = backgroundCanvasOffsetY;
+                largeCanvasStartOffsetX = largeCanvasOffsetX;
+                largeCanvasStartOffsetY = largeCanvasOffsetY;
             };
 
             //触摸事件触发鼠标事件（移动端）
-            largeCanvas.ontouchstart = function (e) {
+            viewCanvas.ontouchstart = function (e) {
                 e.preventDefault();
                 let touch = e.touches[0];
-                largeCanvas.dispatchEvent(new MouseEvent("mousedown", {
+                viewCanvas.dispatchEvent(new MouseEvent("mousedown", {
                     buttons: 1,
                     clientX: touch.clientX,
                     clientY: touch.clientY
                 }));
             };
-            largeCanvas.ontouchmove = function (e) {
+            viewCanvas.ontouchmove = function (e) {
                 e.preventDefault();
                 let touch = e.touches[0];
-                largeCanvas.dispatchEvent(new MouseEvent("mousemove", {
+                viewCanvas.dispatchEvent(new MouseEvent("mousemove", {
                     buttons: 1,
                     clientX: touch.clientX,
                     clientY: touch.clientY
                 }));
             };
-            largeCanvas.ontouchend = function (e) {
+            viewCanvas.ontouchend = function (e) {
                 e.preventDefault();
                 let touch = e.changedTouches[0];
-                largeCanvas.dispatchEvent(new MouseEvent("mouseup", {
+                viewCanvas.dispatchEvent(new MouseEvent("mouseup", {
                     buttons: 1,
                     clientX: touch.clientX,
                     clientY: touch.clientY
                 }));
             };
-            largeCanvas.ontouchcancel = function (e) {
+            viewCanvas.ontouchcancel = function (e) {
                 e.preventDefault();
-                largeCanvas.dispatchEvent(new MouseEvent("mouseout", {}));
+                viewCanvas.dispatchEvent(new MouseEvent("mouseout", {}));
             };
         }
 
     });
 
-    //大图点击或触摸事件
-    function largeCanvasClick(e) {
+    //视图点击或触摸事件
+    function viewCanvasClick(e) {
         //实际在全图上的点击坐标
-        let rect = largeCanvas.getBoundingClientRect();
-        let realClickX = e.clientX - rect.left + backgroundCanvasOffsetX - (pixelSize + 1),
-            realClickY = e.clientY - rect.top + backgroundCanvasOffsetY - (pixelSize + 1);
+        let rect = viewCanvas.getBoundingClientRect();
+        let realClickX = e.clientX - rect.left + largeCanvasOffsetX - (pixelSize + 1),
+            realClickY = e.clientY - rect.top + largeCanvasOffsetY - (pixelSize + 1);
         //如果点在标尺上则不触发事件
-        if (realClickX < 0 || realClickX > largeCanvas.width + backgroundCanvasOffsetX - 2 * (pixelSize + 1)
-            || realClickY < 0 || realClickY > largeCanvas.height + backgroundCanvasOffsetY - 2 * (pixelSize + 1)) return;
+        if (realClickX < 0 || realClickX > viewCanvas.width + largeCanvasOffsetX - 2 * (pixelSize + 1)
+            || realClickY < 0 || realClickY > viewCanvas.height + largeCanvasOffsetY - 2 * (pixelSize + 1)) return;
 
         //如果当前正在过滤颜色，则恢复全部颜色
         if (filterColor) {
             filterColor = null;
-            refreshLargeImage();
+            refreshImage();
             return;
         }
 
         //实际像素坐标
         let pointX = ~~(realClickX / (pixelSize + 1)),
             pointY = ~~(realClickY / (pixelSize + 1));
-        let pointColor = getLargeCanvasColor(pointX, pointY);
+        let pointColor = getViewCanvasColor(pointX, pointY);
         if (!pointColor) return;
         let pointColorHex = rgbToHex(pointColor.r, pointColor.g, pointColor.b);
         let fontColor = getFontColor(pointColorHex);//浅色黑字，深色白字
@@ -404,15 +410,15 @@
     }
 
     //获取大图指定坐标点对应的图片色值
-    function getLargeCanvasColor(x, y) {
+    function getViewCanvasColor(x, y) {
         //根据当前显示的是全图还是切块，读取坐标所在rgb数据
         let imageData, cursor;
-        if (!currentSlicePic) {
-            let ctx = paletteCanvas.getContext('2d');
-            imageData = ctx.getImageData(0, 0, paletteCanvas.width, paletteCanvas.height);
-            cursor = (y * paletteCanvas.width + x) * 4;
+        if (!currentSliceImage) {
+            let fullCtx = fullCanvas.getContext('2d');
+            imageData = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
+            cursor = (y * fullCanvas.width + x) * 4;
         } else {
-            imageData = fullPicData[currentSlicePic.y][currentSlicePic.x];
+            imageData = sliceImages[currentSliceImage.y][currentSliceImage.x];
             cursor = (y * pieceSize + x) * 4;
         }
 
@@ -504,13 +510,17 @@
             imageData.data[i + 3] = 255;//处理后一律变成不透明色
         }
 
+        //保存换色后的原图
+        paletteImageData = imageData;
+
+        similarColorCache = null;
         destCanvas.width = sourceCanvas.width;
         destCanvas.height = sourceCanvas.height;
         destCtx.putImageData(imageData, 0, 0);
     }
 
     //将canvas分割为小图并输出为可点击的image集合
-    function sliceCanvasToImage(canvas) {
+    function sliceCanvasToImage(canvas, sliceContainerName) {
         let ctx = canvas.getContext('2d'),
             rowCount = Math.ceil(canvas.height / pieceSize),//分割行数
             colCount = Math.ceil(canvas.width / pieceSize);//分割列数
@@ -524,7 +534,7 @@
             }
             tableHtml += "</tr>";
         }
-        document.getElementById('sliceImageContainer').innerHTML = tableHtml;
+        document.getElementById(sliceContainerName).innerHTML = tableHtml;
 
         //生成临时Canvas用于转换分割小图
         let tempCanvas = document.createElement('canvas'),
@@ -536,16 +546,16 @@
         tempCtx.textBaseline = 'bottom';
         tempCtx.textAlign = 'right';
 
-        fullPicData = new Array(rowCount);
+        sliceImages = new Array(rowCount);
         for (let y = 0; y < rowCount; y++) {
-            fullPicData[y] = new Array(colCount);
+            sliceImages[y] = new Array(colCount);
             for (let x = 0; x < colCount; x++) {
                 tempCtx.clearRect(0, 0, pieceSize, pieceSize);
                 //如果宽高超出canvas则减小
                 let width = (x + 1 * pieceSize) > canvas.width ? canvas.width - x * pieceSize : pieceSize;
                 let height = (y + 1 * pieceSize) > canvas.height ? canvas.height - y * pieceSize : pieceSize;
                 let imageData = ctx.getImageData(x * pieceSize, y * pieceSize, width, height);
-                fullPicData[y][x] = imageData;
+                sliceImages[y][x] = imageData;
 
                 tempCtx.putImageData(imageData, 0, 0);
                 tempCtx.fillText((y + 1) + ',' + (x + 1), pieceSize, pieceSize);
@@ -553,47 +563,47 @@
                 let img = document.getElementById("sliceImage-" + y + "_" + x);
                 img.src = tempImageURL;
                 img.onclick = function () {
-                    currentSlicePic = { x: x, y: y };
-                    showLargeImage(fullPicData[y][x], width, height);
+                    currentSliceImage = { x: x, y: y };
+                    showImageView(sliceImages[y][x]);
                 };
             }
         }
     }
 
-    //生成全图的马赛克大图
-    function showFullLargeImage(sourceCanvas, keepOffset) {
-        currentSlicePic = null;
-        let imageData = sourceCanvas.getContext('2d').getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-        showLargeImage(imageData, sourceCanvas.width, sourceCanvas.height, keepOffset);
+    //生成全图的马赛克视图
+    function showFullImageView(keepOffset) {
+        currentSliceImage = null;
+        let imageData = fullCanvas.getContext('2d').getImageData(0, 0, fullCanvas.width, fullCanvas.height);
+        showImageView(imageData, fullCanvas.width, fullCanvas.height, keepOffset);
     }
 
-    //生成马赛克大图
-    function showLargeImage(imageData, width, height, keepOffset) {
-        //首先绘制在backgroundLargeCanvas上，再根据偏移坐标绘到largeCanvas
-        backgroundLargeCanvas = document.createElement('canvas');
-        let fullLargeCtx = backgroundLargeCanvas.getContext('2d');
+    //生成指定图像数据马赛克视图
+    function showImageView(imageData, keepOffset) {
+        //首先绘制在largeCanvas上，再根据偏移坐标绘到viewCanvas
+        largeCanvas = document.createElement('canvas');
+        let largeCtx = largeCanvas.getContext('2d');
 
-        backgroundLargeCanvas.width = width * (pixelSize + 1);
-        backgroundLargeCanvas.height = height * (pixelSize + 1);
-        fullLargeCtx.font = (~~(pixelSize / 2) + 1) + 'px monospace';
-        fullLargeCtx.strokeStyle = '#000';
-        fullLargeCtx.textBaseline = 'middle';
-        fullLargeCtx.textAlign = 'center';
+        largeCanvas.width = imageData.width * (pixelSize + 1);
+        largeCanvas.height = imageData.height * (pixelSize + 1);
+        largeCtx.font = (~~(pixelSize / 2) + 1) + 'px monospace';
+        largeCtx.strokeStyle = '#000';
+        largeCtx.textBaseline = 'middle';
+        largeCtx.textAlign = 'center';
 
         //绘制标尺
-        drawRulers(width, height);
+        drawRulers(imageData.width, imageData.height);
 
         //绘制网格
-        fullLargeCtx.beginPath();
-        for (let x = 1; x < width; x++) {
-            fullLargeCtx.moveTo(x * (pixelSize + 1) - 0.5, 0);
-            fullLargeCtx.lineTo(x * (pixelSize + 1) - 0.5, backgroundLargeCanvas.height);
-            fullLargeCtx.stroke();
+        largeCtx.beginPath();
+        for (let x = 1; x < imageData.width; x++) {
+            largeCtx.moveTo(x * (pixelSize + 1) - 0.5, 0);
+            largeCtx.lineTo(x * (pixelSize + 1) - 0.5, largeCanvas.height);
+            largeCtx.stroke();
         }
-        for (let y = 1; y < height; y++) {
-            fullLargeCtx.moveTo(0, y * (pixelSize + 1) - 0.5);
-            fullLargeCtx.lineTo(backgroundLargeCanvas.width, y * (pixelSize + 1) - 0.5);
-            fullLargeCtx.stroke();
+        for (let y = 1; y < imageData.height; y++) {
+            largeCtx.moveTo(0, y * (pixelSize + 1) - 0.5);
+            largeCtx.lineTo(largeCanvas.width, y * (pixelSize + 1) - 0.5);
+            largeCtx.stroke();
         }
 
         //逐像素读取原图并绘制大图
@@ -611,39 +621,39 @@
             let hex = rgbToHex(r, g, b);
 
             //计算坐标
-            let x = (i / 4) % width;
-            let y = ~~((i / 4) / width);
-            let realPosition = getRealPosition(x, y);
+            let x = (i / 4) % imageData.width;
+            let y = ~~((i / 4) / imageData.width);
+            // let realPosition = getRealPosition(x, y);
 
-            //检查像素替换颜色
-            if (pixelColorReplaceList.has(realPosition.x + ',' + realPosition.y)) {
-                let replaceColor = pixelColorReplaceList.get(realPosition.x + ',' + realPosition.y).new;
-                let replaceColorRgb = hexToRgb(replaceColor);
-                hex = replaceColor;
-                r = replaceColorRgb.r;
-                g = replaceColorRgb.g;
-                b = replaceColorRgb.b;
-            }
-            //检查替换颜色
-            else if (colorReplaceList.has(hex)) {
-                let replaceColor = colorReplaceList.get(hex);
-                let replaceColorRgb = hexToRgb(replaceColor);
-                hex = replaceColor;
-                r = replaceColorRgb.r;
-                g = replaceColorRgb.g;
-                b = replaceColorRgb.b;
-            }
+            // //检查像素替换颜色
+            // if (pixelColorReplaceList.has(realPosition.x + ',' + realPosition.y)) {
+            //     let replaceColor = pixelColorReplaceList.get(realPosition.x + ',' + realPosition.y).new;
+            //     let replaceColorRgb = hexToRgb(replaceColor);
+            //     hex = replaceColor;
+            //     r = replaceColorRgb.r;
+            //     g = replaceColorRgb.g;
+            //     b = replaceColorRgb.b;
+            // }
+            // //检查替换颜色
+            // else if (colorReplaceList.has(hex)) {
+            //     let replaceColor = colorReplaceList.get(hex);
+            //     let replaceColorRgb = hexToRgb(replaceColor);
+            //     hex = replaceColor;
+            //     r = replaceColorRgb.r;
+            //     g = replaceColorRgb.g;
+            //     b = replaceColorRgb.b;
+            // }
 
-            if (filterColor && filterColor != hex) continue;//如果启用过滤颜色则只显示此颜色
+            // if (filterColor && filterColor != hex) continue;//如果启用过滤颜色则只显示此颜色
 
             totolBeadCount++;
 
             //绘制大像素块
-            fullLargeCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-            fullLargeCtx.fillRect(x * (pixelSize + 1), y * (pixelSize + 1), pixelSize, pixelSize);
+            largeCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+            largeCtx.fillRect(x * (pixelSize + 1), y * (pixelSize + 1), pixelSize, pixelSize);
 
             //写文字
-            fullLargeCtx.fillStyle = getFontColor(r, g, b);//浅色黑字，深色白字
+            largeCtx.fillStyle = getFontColor(r, g, b);//浅色黑字，深色白字
 
             //统计颜色或出错信息
             let color = paletteMap.get(hex);
@@ -657,15 +667,15 @@
                 if (colorSum.has('Err')) colorSum.set('Err', colorSum.get('Err') + 1);
                 else colorSum.set('Err', 1);
             }
-            fullLargeCtx.fillText(color ? color.name : 'Err', x * (pixelSize + 1) + ~~(pixelSize * 0.5), y * (pixelSize + 1) + ~~(pixelSize * 0.5));
+            largeCtx.fillText(color ? color.name : 'Err', x * (pixelSize + 1) + ~~(pixelSize * 0.5), y * (pixelSize + 1) + ~~(pixelSize * 0.5));
         }
 
         if (!keepOffset) {//保持拖拽偏移量不变（刷新时用）
-            backgroundCanvasStartOffsetX = 0, backgroundCanvasStartOffsetY = 0;
-            backgroundCanvasOffsetX = 0, backgroundCanvasOffsetY = 0;
+            largeCanvasStartOffsetX = 0, largeCanvasStartOffsetY = 0;
+            largeCanvasOffsetX = 0, largeCanvasOffsetY = 0;
         }
-        //绘制部分图像到largeCanvas
-        showPartLargeCanvas();
+        //绘制部分图像到viewCanvas
+        showPartView();
 
         //按颜色数量递减排序并显示在颜色统计框
         let colorSumSorted = new Map([...colorSum.entries()].sort(function (a, b) {
@@ -679,30 +689,30 @@
         }
         document.getElementById('colorSumTable').innerHTML = sumHtml;
 
-        let infoHtml = currentSlicePic ?
-            "第" + (currentSlicePic.y + 1) + "行第" + (currentSlicePic.x + 1) + "列的图块(" + pieceSize + "x" + pieceSize + ")"
-            : "全图(" + paletteCanvas.width + "x" + paletteCanvas.height + ")";
+        let infoHtml = currentSliceImage ?
+            "第" + (currentSliceImage.y + 1) + "行第" + (currentSliceImage.x + 1) + "列的图块(" + pieceSize + "x" + pieceSize + ")"
+            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ")";
         if (filterColor) infoHtml += ",只显示颜色" + paletteMap.get(filterColor).name + ",#" + filterColor;
         infoHtml += "," + totolBeadCount + "颗";
         //显示大图摘要说明
         document.getElementById('largePicInfo').innerHTML = infoHtml;
     }
 
-    //将完整图像数据的一部分绘制到大图
-    function showPartLargeCanvas() {
-        if (isDrawingLargeCanvas) return;
-        isDrawingLargeCanvas = true;
-        let fullLargeCtx = backgroundLargeCanvas.getContext('2d'),
-            largeCtx = largeCanvas.getContext('2d');
+    //将大图的一部分绘制到视图
+    function showPartView() {
+        if (isDrawingViewCanvas) return;
+        isDrawingViewCanvas = true;
+        let largeCtx = largeCanvas.getContext('2d'),
+            viewCtx = viewCanvas.getContext('2d');
 
         //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
-        largeCanvas.width = largeCanvas.clientWidth, largeCanvas.height = largeCanvas.clientWidth;
+        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
         //切图时要计算两边的标尺长度
-        let viewImageData = fullLargeCtx.getImageData(backgroundCanvasOffsetX, backgroundCanvasOffsetY, largeCanvas.width - 2 * (pixelSize + 1), largeCanvas.height - 2 * (pixelSize + 1));
-        largeCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
+        let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
+        viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
         //显示局部标尺
         showPartRulers();
-        isDrawingLargeCanvas = false;
+        isDrawingViewCanvas = false;
     }
 
     //绘制完整标尺
@@ -771,42 +781,97 @@
         }
     }
 
-    //将完整标尺的一部分绘制到大图
+    //将完整标尺的一部分绘制到视图四边
     function showPartRulers() {
-        let largeCtx = largeCanvas.getContext('2d'),
+        let viewCtx = viewCanvas.getContext('2d'),
             rulerX1Ctx = rulerX1Canvas.getContext('2d'), rulerX2Ctx = rulerX2Canvas.getContext('2d'),
             rulerY1Ctx = rulerY1Canvas.getContext('2d'), rulerY2Ctx = rulerY2Canvas.getContext('2d');
         //绘制上横标尺
-        largeCtx.putImageData(rulerX1Ctx.getImageData(backgroundCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, 0);
+        viewCtx.putImageData(rulerX1Ctx.getImageData(largeCanvasOffsetX, 0, viewCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, 0);
         //绘制下横标尺
-        largeCtx.putImageData(rulerX2Ctx.getImageData(backgroundCanvasOffsetX, 0, largeCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, largeCanvas.height - pixelSize - 1);
+        viewCtx.putImageData(rulerX2Ctx.getImageData(largeCanvasOffsetX, 0, viewCanvas.width - 2 * (pixelSize + 1), pixelSize + 1), pixelSize + 1, viewCanvas.height - pixelSize - 1);
         //绘制左竖标尺
-        largeCtx.putImageData(rulerY1Ctx.getImageData(0, backgroundCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), 0, pixelSize + 1);
+        viewCtx.putImageData(rulerY1Ctx.getImageData(0, largeCanvasOffsetY, pixelSize + 1, viewCanvas.height - 2 * (pixelSize + 1)), 0, pixelSize + 1);
         //绘制右竖标尺
-        largeCtx.putImageData(rulerY2Ctx.getImageData(0, backgroundCanvasOffsetY, pixelSize + 1, largeCanvas.height - 2 * (pixelSize + 1)), largeCanvas.width - pixelSize - 1, pixelSize + 1);
+        viewCtx.putImageData(rulerY2Ctx.getImageData(0, largeCanvasOffsetY, pixelSize + 1, viewCanvas.height - 2 * (pixelSize + 1)), viewCanvas.width - pixelSize - 1, pixelSize + 1);
         //绘制四条标尺边线
-        largeCtx.beginPath();
-        largeCtx.moveTo(0, pixelSize + 1 - 0.5);
-        largeCtx.lineTo(largeCanvas.width, pixelSize + 1 - 0.5);
-        largeCtx.stroke();
-        largeCtx.moveTo(0, largeCanvas.height - (pixelSize + 1) - 0.5);
-        largeCtx.lineTo(largeCanvas.width, largeCanvas.height - (pixelSize + 1) - 0.5);
-        largeCtx.stroke();
-        largeCtx.moveTo(pixelSize + 1 - 0.5, 0);
-        largeCtx.lineTo(pixelSize + 1 - 0.5, largeCanvas.height);
-        largeCtx.stroke();
-        largeCtx.moveTo(largeCanvas.width - (pixelSize + 1) - 0.5, 0);
-        largeCtx.lineTo(largeCanvas.width - (pixelSize + 1) - 0.5, largeCanvas.height);
-        largeCtx.stroke();
+        viewCtx.beginPath();
+        viewCtx.moveTo(0, pixelSize + 1 - 0.5);
+        viewCtx.lineTo(viewCanvas.width, pixelSize + 1 - 0.5);
+        viewCtx.stroke();
+        viewCtx.moveTo(0, viewCanvas.height - (pixelSize + 1) - 0.5);
+        viewCtx.lineTo(viewCanvas.width, viewCanvas.height - (pixelSize + 1) - 0.5);
+        viewCtx.stroke();
+        viewCtx.moveTo(pixelSize + 1 - 0.5, 0);
+        viewCtx.lineTo(pixelSize + 1 - 0.5, viewCanvas.height);
+        viewCtx.stroke();
+        viewCtx.moveTo(viewCanvas.width - (pixelSize + 1) - 0.5, 0);
+        viewCtx.lineTo(viewCanvas.width - (pixelSize + 1) - 0.5, viewCanvas.height);
+        viewCtx.stroke();
     }
 
-    //刷新大图
-    function refreshLargeImage() {
-        if (!currentSlicePic) {
-            showFullLargeImage(paletteCanvas, true);
+    //刷新图片（修改显示像素或者替换颜色之后，保持当前视角不变进行刷新）
+    function refreshImage() {
+        let ctx = fullCanvas.getContext('2d'),
+            newImageData = ctx.createImageData(paletteImageData);//新建一份原尺寸的透明图形数据
+
+        //逐像素读取替换调色板后的原图
+        for (let i = 0; i < paletteImageData.data.length; i += 4) {
+            //如果透明则跳过
+            let a = paletteImageData.data[i + 3];
+            if (a == 0) continue;
+
+            //获取颜色值
+            let r = paletteImageData.data[i];
+            let g = paletteImageData.data[i + 1];
+            let b = paletteImageData.data[i + 2];
+            let hex = rgbToHex(r, g, b);
+
+            //计算坐标
+            let x = (i / 4) % paletteImageData.width;
+            let y = ~~((i / 4) / paletteImageData.width);
+
+            //检查像素替换颜色
+            if (pixelColorReplaceList.has(x + ',' + y)) {
+                let replaceColor = pixelColorReplaceList.get(x + ',' + y).new;
+                let replaceColorRgb = hexToRgb(replaceColor);
+                hex = replaceColor;
+                r = replaceColorRgb.r;
+                g = replaceColorRgb.g;
+                b = replaceColorRgb.b;
+            }
+            //检查替换颜色
+            else if (colorReplaceList.has(hex)) {
+                let replaceColor = colorReplaceList.get(hex);
+                let replaceColorRgb = hexToRgb(replaceColor);
+                hex = replaceColor;
+                r = replaceColorRgb.r;
+                g = replaceColorRgb.g;
+                b = replaceColorRgb.b;
+            }
+
+            //如果启用过滤颜色则只显示此颜色
+            if (filterColor && filterColor != hex) continue;
+
+            //设置新图像素点
+            newImageData.data[i] = r;
+            newImageData.data[i + 1] = g;
+            newImageData.data[i + 2] = b;
+            newImageData.data[i + 3] = 255;//处理后一律变成不透明色
+        }
+
+        //绘制过滤替换后的新图
+        ctx.putImageData(newImageData, 0, 0);
+
+        //将完整图片切成图块
+        sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
+
+        //根据当前显示的是全图或图块显示视图
+        if (!currentSliceImage) {
+            showFullImageView(true);
         }
         else {
-            showLargeImage(fullPicData[currentSlicePic.y][currentSlicePic.x], pieceSize, pieceSize, true);
+            showImageView(sliceImages[currentSliceImage.y][currentSliceImage.x], pieceSize, pieceSize, true);
         }
     }
 
@@ -817,7 +882,7 @@
             pixelColorReplaceHtml += '<tr><td>' + position + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.old + ';color:' + getFontColor(colors.old) + ';">' + paletteMap.get(colors.old).name + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.new + ';color:' + getFontColor(colors.new) + ';">' + paletteMap.get(colors.new).name + '</td>';
-            pixelColorReplaceHtml += '<td><button type="button" class="btn btn-link btn-sm remove-pixel-color-replace" value=' + position + '>X</button></td></tr>';
+            pixelColorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-pixel-color-replace" value=' + position + '>删除</button></td></tr>';
         }
         document.getElementById('pixelColorReplaceTable').innerHTML = pixelColorReplaceHtml;
 
@@ -825,7 +890,7 @@
         for (let [oldColor, newColor] of colorReplaceList) {
             colorReplaceHtml += '<tr><td style="background:#' + oldColor + ';color:' + getFontColor(oldColor) + ';">' + paletteMap.get(oldColor).name + '</td>';
             colorReplaceHtml += '<td style="background:#' + newColor + ';color:' + getFontColor(newColor) + ';">' + paletteMap.get(newColor).name + '</td>';
-            colorReplaceHtml += '<td><button type="button" class="btn btn-link btn-sm remove-color-replace" value=' + oldColor + '>X</button></td></tr>';
+            colorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-color-replace" value=' + oldColor + '>删除</button></td></tr>';
         }
         document.getElementById('colorReplaceTable').innerHTML = colorReplaceHtml;
 
@@ -835,7 +900,7 @@
             if (colorReplaceList.has(color)) {
                 colorReplaceList.delete(color);
                 refreshColorReplaceList();
-                refreshLargeImage();
+                refreshImage();
             }
         });
         $(".remove-pixel-color-replace").click(function () {
@@ -843,7 +908,7 @@
             if (pixelColorReplaceList.has(position)) {
                 pixelColorReplaceList.delete(position);
                 refreshColorReplaceList();
-                refreshLargeImage();
+                refreshImage();
             }
 
         });
@@ -852,14 +917,14 @@
     //使用切块坐标获取在全图中的真实坐标
     function getRealPosition(x, y) {
         //如果显示的是全图则直接返回原始坐标
-        if (!currentSlicePic) {
+        if (!currentSliceImage) {
             return { x: x, y: y };
         }
         //否则根据切块位置计算真实坐标
         else {
             return {
-                x: x + currentSlicePic.x * pieceSize,
-                y: y + currentSlicePic.y * pieceSize
+                x: x + currentSliceImage.x * pieceSize,
+                y: y + currentSliceImage.y * pieceSize
             };
         }
     }
@@ -867,14 +932,14 @@
     //使用真实坐标获取在切块中的坐标
     function getSlicePosition(x, y) {
         //如果显示的是全图则直接返回原始坐标
-        if (!currentSlicePic) {
+        if (!currentSliceImage) {
             return { x: x, y: y };
         }
         //否则通过真实坐标计算当前切块中的坐标
         else {
             return {
-                x: x - currentSlicePic.x * pieceSize,
-                y: y - currentSlicePic.y * pieceSize
+                x: x - currentSliceImage.x * pieceSize,
+                y: y - currentSliceImage.y * pieceSize
             };
         }
     }

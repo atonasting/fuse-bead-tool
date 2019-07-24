@@ -23,11 +23,8 @@ canvas {
 #colorSelector>div.selected{
     border: 3px solid #ff0000;
 }
-.remove-pixel-color-replace,.remove-color-replace{
-    color: #ff0000;
-    text-decoration: none;    
-}
-.remove-pixel-color-replace:hover,.remove-color-replace:hover{
-    color: #ff0000;
-    text-decoration: none;
+#pixelColorReplaceTable td, #colorReplaceTable td{
+    text-align:center;
+    line-height:32px;
+    vertical-align: middle;
 }
