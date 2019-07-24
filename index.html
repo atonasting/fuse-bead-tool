@@ -109,6 +109,8 @@
                             </table>
                             <div class="dropdown-divider"></div>
                             <button type="button" class="btn btn-danger btn-sm" id="removeAllColorReplace">全部删除</button>
+                            <button type="button" class="btn btn-primary btn-sm"
+                                id="showColorReplaceJsonModel">导入/导出</button>
                         </div>
                     </div>
                 </div>
@@ -138,6 +140,34 @@
                         <button type="button" class="btn btn-primary" id='replaceColor' value=''>替换所有颜色</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="colorReplaceJsonModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">导入/导出颜色替换配置</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <label>颜色替换配置:</label>
+                    <textarea class="form-control" rows="10" id="colorReplaceJson"></textarea>
+                    <div id="copySuccessAlert" class="alert alert-success">
+                        <a href="#" class="close" data-dismiss="alert">&times;</a>
+                        复制成功！
+                    </div>
+                    <div id="importErrorAlert" class="alert alert-warning">
+                        <a href="#" class="close" data-dismiss="alert">&times;</a>
+                        导入格式错误！
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="copyColorReplaceJson">复制到剪贴板</button>
+                    <button type="button" class="btn btn-primary" id="importColorReplaceJson">导入</button>
                 </div>
             </div>
         </div>
@@ -198,8 +228,7 @@
             }, false);
 
             //图片加载事件
-            let imageChooser = document.getElementById('imageChooser');
-            imageChooser.onchange = function (e) {
+            document.getElementById('imageChooser').onchange = function (e) {
                 $(this).next('.custom-file-label').html(e.target.files[0].name);//bootstrap的file控件不会自动赋值，需要手工显示
                 $('#mainContent').show();
                 if (e.target.files.length <= 0) return;
@@ -242,8 +271,7 @@
             };
 
             //只显示某颜色按钮点击
-            let showSingleColorButton = document.getElementById('showSingleColor');
-            showSingleColorButton.onclick = function (e) {
+            document.getElementById('showSingleColor').onclick = function (e) {
                 filterColor = selectedPixel.color;
                 refreshImage();
                 $('#colorModal').modal('hide');
@@ -258,8 +286,7 @@
             });
 
             //替换单个像素按钮点击
-            let replacePixelButton = document.getElementById('replacePixel');
-            replacePixelButton.onclick = function (e) {
+            document.getElementById('replacePixel').onclick = function (e) {
                 if (!this.value) return;
                 //替换像素坐标使用的是全图真实坐标
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
@@ -270,8 +297,7 @@
             };
 
             //替换相同颜色按钮点击
-            let replaceColorButton = document.getElementById('replaceColor');
-            replaceColorButton.onclick = function (e) {
+            document.getElementById('replaceColor').onclick = function (e) {
                 if (!this.value) return;
                 colorReplaceList.set(selectedPixel.color, this.value);
                 refreshColorReplaceList();
@@ -289,13 +315,70 @@
             });
 
             //移除所有颜色替换选项
-            let removeAllColorReplaceButton = document.getElementById('removeAllColorReplace');
-            removeAllColorReplaceButton.onclick = function (e) {
+            document.getElementById('removeAllColorReplace').onclick = function (e) {
                 colorReplaceList = new Map();
                 pixelColorReplaceList = new Map();
                 refreshColorReplaceList();
                 refreshImage();
             };
+
+            //颜色替换选项导入/导出按钮
+            document.getElementById('showColorReplaceJsonModel').onclick = function (e) {
+                if (pixelColorReplaceList.size == 0 && colorReplaceList.size == 0) {
+                    document.getElementById('colorReplaceJson').value = '';
+                }
+                else {
+                    //生成json
+                    let jsonObj = {
+                        pixelColorReplaceList: [...pixelColorReplaceList],
+                        colorReplaceList: [...colorReplaceList]
+                    };
+                    document.getElementById('colorReplaceJson').value = JSON.stringify(jsonObj);
+                }
+
+                $("#copySuccessAlert").hide();
+                $("#importErrorAlert").hide();
+                $('#colorReplaceJsonModal').modal('show');
+            }
+
+            //复制颜色替换选项json到剪贴板
+            document.getElementById('copyColorReplaceJson').onclick = function (e) {
+                if (document.getElementById("colorReplaceJson").value.trim().length == 0) return;
+
+                document.getElementById("colorReplaceJson").select();
+                document.execCommand("Copy");//执行浏览器复制命令
+                $("#copySuccessAlert").show().delay(2000).slideUp(200, function () {
+                    $(this).hide();
+                });
+            };
+
+            //导入颜色替换选项
+            document.getElementById('importColorReplaceJson').onclick = function (e) {
+                let json = document.getElementById('colorReplaceJson').value;
+                if (!json) return;
+                try {
+                    let jsonObj = JSON.parse(json);
+                    if (!jsonObj || !jsonObj.pixelColorReplaceList || !jsonObj.pixelColorReplaceList) {
+                        console.log('json格式错误');
+                        $("#importErrorAlert").show().delay(2000).slideUp(200, function () {
+                            $(this).hide();
+                        });
+                        return;
+                    }
+                    pixelColorReplaceList = new Map(jsonObj.pixelColorReplaceList);
+                    colorReplaceList = new Map(jsonObj.colorReplaceList);
+
+                    refreshColorReplaceList();
+                    refreshImage();
+                    $('#colorReplaceJsonModal').modal('hide');
+                } catch (e) {
+                    console.log(e);
+                    $("#importErrorAlert").alert().delay(2000).slideUp(200, function () {
+                        $(this).alert('close');
+                    });
+                }
+            };
+
         }
 
         //视图互动事件
@@ -910,7 +993,6 @@
                 refreshColorReplaceList();
                 refreshImage();
             }
-
         });
     }
 
