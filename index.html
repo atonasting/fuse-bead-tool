@@ -59,26 +59,26 @@
         </div>
         <div class="card">
             <div class="card-header row">
-                <label id='largePicInfo' class="col-form-label col-sm-8"></label>
-                <div class="dropdown col-sm-2">
+                <label id='largePicInfo' class="col-form-label col-md-8"></label>
+                <div class="dropdown col-md-2">
                     <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownColorSum"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         颜色统计
                     </button>
                     <div class="dropdown-menu overflow-auto" aria-labelledby="dropdownColorSum" id="colorSum"
-                        style="max-height:800px;">
+                        style="max-height:800px;min-width: 150px;">
                         <table class="table table-sm">
                             <thead>
-                                <th style="width: 36px;"> </th>
-                                <th>颜色</th>
+                                <th style="width: 36px;">颜色</th>
                                 <th>数量</th>
+                                <th></th>
                             </thead>
                             <tbody id="colorSumTable">
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="dropdown col-sm-2">
+                <div class="dropdown col-md-2">
                     <button class="btn btn-outline-danger dropdown-toggle" type="button" id="dropdownColorReplace"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         颜色替换
@@ -741,9 +741,8 @@
             //统计颜色或出错信息
             let color = paletteMap.get(hex);
             if (color) {
-                let key = color.name + '#' + rgbToHex(r, g, b);//统计键值包含了名称和颜色
-                if (colorSum.has(key)) colorSum.set(key, colorSum.get(key) + 1);
-                else colorSum.set(key, 1);
+                if (colorSum.has(hex)) colorSum.set(hex, colorSum.get(hex) + 1);
+                else colorSum.set(hex, 1);
             }
             else {
                 console.log('Error color: ' + rgbToHex(r, g, b));
@@ -764,19 +763,29 @@
         let colorSumSorted = new Map([...colorSum.entries()].sort(function (a, b) {
             return b[1] - a[1];
         }));
-
         let sumHtml = '';
         for (let [color, count] of colorSumSorted) {
-            //color键分两部分：名称逗号色值
-            sumHtml += '<tr><td style="background:#' + color.split('#')[1] + '"> </td><td>' + color.split('#')[0] + '</td><td>' + count + '</td></tr>';
+            sumHtml += '<tr><td style="background:#' + color + ';color:' + getFontColor(color) + ';">' + paletteMap.get(color).name + '</td><td>' + count + '</td>';
+            if (color != 'Err')
+                sumHtml += '<td><button type="button" class="btn btn-primary btn-sm filterColor" value=' + color + '>&lt;&lt;</button></td></tr>';
+            else
+                sumHtml += '<td></td></tr>';
         }
         document.getElementById('colorSumTable').innerHTML = sumHtml;
 
+        //绑定颜色筛选事件
+        $('.filterColor').click(function (e) {
+            let color = $(this).attr('value');
+            if (color && color != 'Err') {
+                filterColor = color;
+                refreshImage();
+            }
+        });
+
         let infoHtml = currentSliceImage ?
             "第" + (currentSliceImage.y + 1) + "行第" + (currentSliceImage.x + 1) + "列的图块(" + pieceSize + "x" + pieceSize + ")"
-            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ")";
-        if (filterColor) infoHtml += ",只显示颜色" + paletteMap.get(filterColor).name + ",#" + filterColor;
-        infoHtml += "," + totolBeadCount + "颗";
+            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ") ," + totolBeadCount + "颗";
+        if (filterColor) infoHtml += "(只显示颜色" + paletteMap.get(filterColor).name + ",#" + filterColor + ",点击大图显示全部)";
         //显示大图摘要说明
         document.getElementById('largePicInfo').innerHTML = infoHtml;
     }
