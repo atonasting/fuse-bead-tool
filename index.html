@@ -1044,7 +1044,11 @@
     function refreshColorReplaceList() {
         let pixelColorReplaceHtml = '';
         for (let [position, colors] of pixelColorReplaceList) {
-            pixelColorReplaceHtml += '<tr><td>' + position + '</td>';
+            //原位置坐标为数组下标，需要各自+1后显示
+            let positions = position.split(',');
+            let positionText = (parseInt(positions[0]) + 1) + ',' + (parseInt(positions[1]) + 1);
+
+            pixelColorReplaceHtml += '<tr><td>' + positionText + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.old + ';color:' + getFontColor(colors.old) + ';">' + paletteMap.get(colors.old).name + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.new + ';color:' + getFontColor(colors.new) + ';">' + paletteMap.get(colors.new).name + '</td>';
             pixelColorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-pixel-color-replace" value=' + position + '>删除</button></td></tr>';
