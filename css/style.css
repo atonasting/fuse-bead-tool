@@ -8,19 +8,21 @@ canvas {
 {
     display: none;
 }
-#colorSelector>div{
+.colorBlock{
     display:inline-block;
     width:24px;
     height:24px;
     text-align:center;
     line-height:24px;
     margin: 2px;
-    vertical-align: middle;
+    vertical-align: top;
     font: 12px monospace;
     border: 1px solid #060606;
+}
+.pointer{    
     cursor: pointer;
 }
-#colorSelector>div.selected{
+.colorBlock.selected{
     border: 3px solid #ff0000;
 }
 td{

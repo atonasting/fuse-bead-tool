@@ -5,12 +5,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拼豆图片生成器</title>
-    <link rel="stylesheet" href="bootstrap-4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="css/style.css" rel="stylesheet">
     <script src="js/palette.js"></script>
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.4.1.min.js"></script>
     <script src="js/popper.min.js"></script>
-    <script src='bootstrap-4.3.1/js/bootstrap.min.js'></script>
+    <script src='https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/bootstrap.min.js'></script>
 </head>
 
 <body>
@@ -58,27 +58,9 @@
             </div>
         </div>
         <div class="card">
-            <div class="card-header row">
-                <label id='largePicInfo' class="col-form-label col-md-8"></label>
-                <div class="dropdown col-md-2">
-                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownColorSum"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        颜色统计
-                    </button>
-                    <div class="dropdown-menu overflow-auto" aria-labelledby="dropdownColorSum" id="colorSum"
-                        style="max-height:800px;min-width: 150px;">
-                        <table class="table table-sm">
-                            <thead>
-                                <th style="width: 36px;">颜色</th>
-                                <th>数量</th>
-                                <th></th>
-                            </thead>
-                            <tbody id="colorSumTable">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="dropdown col-md-2">
+            <div class="card-header">
+                <label id='largePicInfo' class="col-form-label"></label>
+                <div class="dropdown float-right mx-2">
                     <button class="btn btn-outline-danger dropdown-toggle" type="button" id="dropdownColorReplace"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         颜色替换
@@ -114,6 +96,28 @@
                         </div>
                     </div>
                 </div>
+                <div class="dropdown float-right mx-2">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownColorSum"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        颜色统计
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right overflow-auto" aria-labelledby="dropdownColorSum"
+                        id="colorSum" style="max-height:800px;min-width: 180px;">
+                        <table class="table table-sm">
+                            <thead>
+                                <th style="width: 36px;">颜色</th>
+                                <th>数量</th>
+                                <th></th>
+                            </thead>
+                            <tbody id="colorSumTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="float-right mx-2" id="brushToolBar">
+                    <label id='brushInfo'></label>
+                    <button type="button" class="btn btn-danger" id="disableBrushMode">退出</button>
+                </div>
             </div>
             <div class="card-body" style='padding: 0.25rem;'>
                 <canvas id="viewCanvas" style='width: 100%;'></canvas>
@@ -131,14 +135,18 @@
                 </div>
                 <div class="modal-body">
                     <div>
-                        <button type="button" class="btn btn-primary" id='showSingleColor' value=''>只显示此颜色</button>
+                        <div id="colorInfo"> </div>
                         <hr />
-                        <div>将颜色替换成：</div>
+                        <button type="button" class="btn btn-primary" id='showSingleColor'>只显示此颜色</button>
+                        <hr />
+                        <strong>颜色替换：</strong>
                         <div id="colorSelector">
                         </div>
-                        <button type="button" class="btn btn-primary" id='replacePixel' value=''>只替换此像素点</button>
-                        <button type="button" class="btn btn-primary" id='replaceColor' value=''>替换所有颜色</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <div id='colorToolBar' class='row justify-content-around py-3'>
+                            <button type="button" class="btn btn-primary" id='replaceColor'>替换所有颜色</button>
+                            <button type="button" class="btn btn-primary" id='replacePixel'>只替换此像素点</button>
+                            <button type="button" class="btn btn-info" id='replacePixelBrush'>进入笔刷模式</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -172,12 +180,25 @@
             </div>
         </div>
     </div>
+    <div class="modal hide" id="loadingMask" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static"
+        data-keyboard="false">
+        <div class="modal-dialog" role="document">
+             <div class="modal-content">
+                <div class="modal-body">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 <script type="text/javascript">
-    var pixelSize = 20,//马赛克像素尺寸（放大倍数）
+    const pixelSize = 20,//马赛克像素尺寸（放大倍数）
         pieceSize = 48,//单块拼板容纳的拼豆数
-        paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
+        dragMinTimeSpan = 20,//拖拽所需的鼠标按下最小时间间隔（ms）
+        dragMinDistance = 5;//拖拽所需的鼠标移动最小距离（像素）
+
+    var paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
         paletteImageData = new Array(),//存储原始图片替换调色板颜色后的原图
         sliceImages = new Array(),//存储所有切块图的二维数组
@@ -188,16 +209,21 @@
         colorReplaceList = new Map(),//颜色替换列表
         pixelColorReplaceList = new Map();//颜色替换列表（单个像素）
 
-    var isDragging = false,//视图是否正在拖拽中
-        startDragX = 0,//拖拽起点X
-        startDragY = 0;//拖拽起点Y
+    var isMouseDown = false,
+        mousedownStartTime = null,//鼠标按下的时间
+        mousedownStartX = 0,//鼠标按下的起点X
+        mousedownStartY = 0,//鼠标按下的起点Y
+        isDragging = false,//视图是否正在拖拽中
+        isBrushMode = false,//是否处于笔刷模式（点击大图直接换色）
+        brushColor = '';//笔刷颜色
 
     var largeCanvas,//生成的马赛克大图Canvas，切出一部分显示在ViewCanvas
         largeCanvasStartOffsetX = 0,//拖拽开始时的背景X坐标偏移
         largeCanvasStartOffsetY = 0,//拖拽开始时的背景Y坐标偏移
         largeCanvasOffsetX = 0,//背景大图的X坐标偏移
         largeCanvasOffsetY = 0,//背景大图的Y坐标偏移
-        isDrawingViewCanvas = false;//视图是否正在绘制中
+        isDrawingViewCanvas = false,//视图是否正在绘制中
+        colorSum = new Map();//大图颜色统计
 
     var rulerX1Canvas, rulerX2Canvas, rulerY1Canvas, rulerY2Canvas;//四个标尺的canvas
 
@@ -215,9 +241,11 @@
         for (let color of paletteMap.values()) {
             let fontColor = getFontColor(color.r, color.g, color.b);
             let hex = rgbToHex(color.r, color.g, color.b);
-            colorSelectorHtml += "<div style='background:#" + hex + ";color:" + fontColor + ";' color='" + hex + "'>" + color.name + "</div>";
+            colorSelectorHtml += "<div class='colorBlock pointer' style='background:#" + hex + ";color:" + fontColor + ";' color='" + hex + "' title='#" + hex + "'>" + color.name + "</div>";
         }
         colorSelector.innerHTML = colorSelectorHtml;
+
+        $('#brushToolBar').hide();
 
         //事件绑定
         {
@@ -281,8 +309,15 @@
             $("#colorSelector>div").click(function (e) {
                 $("#colorSelector>div.selected").removeClass("selected");
                 $(this).addClass("selected");
+                //修改按钮标签
+                $('#replaceColor').html('所有' + selectedPixel.name + '换成' + $(this).html());
+                $('#replacePixel').html('此像素换成' + $(this).html());
+                $('#replacePixelBrush').html('使用' + $(this).html() + '笔刷');
+                $('#colorToolBar').css('visibility', 'visible');
+
                 $('#replacePixel').val($(this).attr("color"));
                 $('#replaceColor').val($(this).attr("color"));
+                $('#replacePixelBrush').val($(this).attr("color"));
             });
 
             //替换单个像素按钮点击
@@ -290,7 +325,7 @@
                 if (!this.value) return;
                 //替换像素坐标使用的是全图真实坐标
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
-                pixelColorReplaceList.set(position.x + ',' + position.y, { old: selectedPixel.color, new: this.value });
+                replacePixelColor(position.x, position.y, this.value);
                 refreshColorReplaceList();
                 refreshImage();
                 $('#colorModal').modal('hide');
@@ -299,10 +334,29 @@
             //替换相同颜色按钮点击
             document.getElementById('replaceColor').onclick = function (e) {
                 if (!this.value) return;
-                colorReplaceList.set(selectedPixel.color, this.value);
+                replaceColor(selectedPixel.color, this.value);
                 refreshColorReplaceList();
                 refreshImage();
                 $('#colorModal').modal('hide');
+            };
+
+            //进入笔刷模式按钮点击
+            document.getElementById('replacePixelBrush').onclick = function (e) {
+                if (isBrushMode) return;
+                isBrushMode = true;
+                brushColor = this.value;
+                $('#brushInfo').html("笔刷模式:<div class='colorBlock' style='color:" + getFontColor(brushColor) + "; background:#" + brushColor + ";'>" + paletteMap.get(brushColor).name + "</div>");
+                $('#brushToolBar').show();
+
+                $('#colorModal').modal('hide');
+            };
+
+            //退出笔刷模式按钮点击
+            document.getElementById('disableBrushMode').onclick = function (e) {
+                isBrushMode = false;
+                brushColor = '';
+                $('#brushInfo').html("");
+                $('#brushToolBar').hide();
             };
 
             //关闭颜色对话框
@@ -385,16 +439,28 @@
         {
             viewCanvas.onmousedown = function (e) {
                 if (e.buttons == 1 && largeCanvas) {//点击左键并且在大图已加载情况下开始拖拽
-                    startDragX = e.clientX;
-                    startDragY = e.clientY;
-                    isDragging = true;
+                    mousedownStartX = e.clientX;
+                    mousedownStartY = e.clientY;
+                    isMouseDown = true;
+                    mousedownStartTime = new Date().getTime();
+                    // isDragging = true;
                 }
             };
             viewCanvas.onmousemove = function (e) {
-                if (isDragging && !isDrawingViewCanvas) {
+                //鼠标按下且移动足够时间和距离后，判定为开始拖拽
+                if (isMouseDown & !isDragging) {
+                    let mousedownTime = new Date().getTime() - mousedownStartTime;
+                    if (mousedownTime > dragMinTimeSpan) {
+                        let mousemoveDistance = Math.abs(mousedownStartX - e.clientX) + Math.abs(mousedownStartY - e.clientY);
+                        if (mousemoveDistance > dragMinDistance) {
+                            isDragging = true;
+                        }
+                    }
+                }
+                else if (isDragging && !isDrawingViewCanvas) {
                     //计算大图偏移值
-                    largeCanvasOffsetX = largeCanvasStartOffsetX + startDragX - e.clientX;
-                    largeCanvasOffsetY = largeCanvasStartOffsetY + startDragY - e.clientY;
+                    largeCanvasOffsetX = largeCanvasStartOffsetX + mousedownStartX - e.clientX;
+                    largeCanvasOffsetY = largeCanvasStartOffsetY + mousedownStartY - e.clientY;
                     if (largeCanvasOffsetX > largeCanvas.width - viewCanvas.width) largeCanvasOffsetX = largeCanvas.width - viewCanvas.width;
                     if (largeCanvasOffsetX < 0) largeCanvasOffsetX = 0;
                     if (largeCanvasOffsetY > largeCanvas.height - viewCanvas.height) largeCanvasOffsetY = largeCanvas.height - viewCanvas.height;
@@ -405,17 +471,18 @@
                 }
             };
             viewCanvas.onmouseup = function (e) {
-                if (isDragging) {
-                    if (e.clientX == startDragX && e.clientY == startDragY) {//如果未移动则触发点击事件
-                        viewCanvasClick(e);
-                    }
+                //鼠标按下但未拖拽时松开鼠标，触发点击
+                if (isMouseDown && !isDragging) {
+                    viewCanvasClick(e);
                 }
                 isDragging = false;
+                isMouseDown = false;
                 largeCanvasStartOffsetX = largeCanvasOffsetX;
                 largeCanvasStartOffsetY = largeCanvasOffsetY;
             };
             viewCanvas.onmouseout = function (e) {
                 isDragging = false;
+                isMouseDown = false;
                 largeCanvasStartOffsetX = largeCanvasOffsetX;
                 largeCanvasStartOffsetY = largeCanvasOffsetY;
             };
@@ -456,7 +523,7 @@
 
     });
 
-    //视图点击或触摸事件
+    //视图点击（触摸）操作
     function viewCanvasClick(e) {
         //实际在全图上的点击坐标
         let rect = viewCanvas.getBoundingClientRect();
@@ -476,19 +543,36 @@
         //实际像素坐标
         let pointX = ~~(realClickX / (pixelSize + 1)),
             pointY = ~~(realClickY / (pixelSize + 1));
-        let pointColor = getViewCanvasColor(pointX, pointY);
-        if (!pointColor) return;
-        let pointColorHex = rgbToHex(pointColor.r, pointColor.g, pointColor.b);
-        let fontColor = getFontColor(pointColorHex);//浅色黑字，深色白字
-        let color = paletteMap.get(pointColorHex);
+        let pointColorHex = getViewCanvasColor(pointX, pointY);//显示的颜色
+        if (!pointColorHex) return;//不操作透明像素
 
-        document.getElementById("pointDialogTitle").innerHTML =
-            "<strong>坐标</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")"
-            + " <strong>色号</strong>" + color.name
-            + " <div style='border:1px solid #060606; display:inline; color:" + fontColor + "; background:#" + pointColorHex + "'>#" + pointColorHex + "</div>";
+        //如果处于笔刷模式则修改像素颜色
+        if (isBrushMode) {
+            let realPosition = getRealPosition(pointX, pointY);
+            replacePixelColor(realPosition.x, realPosition.y, brushColor);
+            refreshColorReplaceList();
+            refreshImage();
+            return;
+        }
 
-        selectedPixel = { x: pointX, y: pointY, color: pointColorHex };
+        let sourceColorHex = getFullImageColor(pointX, pointY);//原始颜色
+        let pointColor = paletteMap.get(pointColorHex);
+        if (sourceColorHex == pointColorHex) {
+            //未换色的情况
+            document.getElementById("colorInfo").innerHTML = " <strong>颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex) + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex;
+        }
+        else {
+            //换色的情况
+            let sourceColor = paletteMap.get(sourceColorHex);
+            document.getElementById("colorInfo").innerHTML = " <strong>当前颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex) + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex
+                + " <strong>原始颜色</strong><div class='colorBlock' style='color:" + getFontColor(sourceColorHex) + "; background:#" + sourceColorHex + ";'>" + sourceColor.name + "</div>#" + sourceColorHex;
 
+        }
+
+        selectedPixel = { x: pointX, y: pointY, color: pointColorHex, name: pointColor.name };
+        document.getElementById("showSingleColor").innerHTML = '只显示' + colorSum.get(pointColorHex) + '个' + pointColor.name;
+        document.getElementById("pointDialogTitle").innerHTML = "<strong>大图坐标</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")";
+        $('#colorToolBar').css('visibility', 'hidden');//占位隐藏工具栏
         $('#colorModal').modal('show');
     }
 
@@ -507,11 +591,16 @@
 
         if (imageData.data[cursor + 3] == 0) return null;
 
-        return {
-            r: imageData.data[cursor],
-            g: imageData.data[cursor + 1],
-            b: imageData.data[cursor + 2],
-        }
+        return rgbToHex(imageData.data[cursor], imageData.data[cursor + 1], imageData.data[cursor + 2]);
+    }
+
+    //获取换色原始图指定坐标点对应的图片色值
+    function getFullImageColor(x, y) {
+        let realPosition = getRealPosition(x, y);
+        let cursor = (realPosition.y * paletteImageData.width + realPosition.x) * 4;
+        if (paletteImageData.data[cursor + 3] == 0) return null;
+
+        return rgbToHex(paletteImageData.data[cursor], paletteImageData.data[cursor + 1], paletteImageData.data[cursor + 2]);
     }
 
     //去除canvas边缘的透明和白色像素
@@ -690,7 +779,7 @@
         }
 
         //逐像素读取原图并绘制大图
-        let colorSum = new Map();//大图颜色统计
+        colorSum = new Map();//大图颜色统计
         let totolBeadCount = 0;//总拼豆数
         for (let i = 0; i < imageData.data.length; i += 4) {
 
@@ -707,27 +796,6 @@
             let x = (i / 4) % imageData.width;
             let y = ~~((i / 4) / imageData.width);
             // let realPosition = getRealPosition(x, y);
-
-            // //检查像素替换颜色
-            // if (pixelColorReplaceList.has(realPosition.x + ',' + realPosition.y)) {
-            //     let replaceColor = pixelColorReplaceList.get(realPosition.x + ',' + realPosition.y).new;
-            //     let replaceColorRgb = hexToRgb(replaceColor);
-            //     hex = replaceColor;
-            //     r = replaceColorRgb.r;
-            //     g = replaceColorRgb.g;
-            //     b = replaceColorRgb.b;
-            // }
-            // //检查替换颜色
-            // else if (colorReplaceList.has(hex)) {
-            //     let replaceColor = colorReplaceList.get(hex);
-            //     let replaceColorRgb = hexToRgb(replaceColor);
-            //     hex = replaceColor;
-            //     r = replaceColorRgb.r;
-            //     g = replaceColorRgb.g;
-            //     b = replaceColorRgb.b;
-            // }
-
-            // if (filterColor && filterColor != hex) continue;//如果启用过滤颜色则只显示此颜色
 
             totolBeadCount++;
 
@@ -767,7 +835,7 @@
         for (let [color, count] of colorSumSorted) {
             sumHtml += '<tr><td style="background:#' + color + ';color:' + getFontColor(color) + ';">' + paletteMap.get(color).name + '</td><td>' + count + '</td>';
             if (color != 'Err')
-                sumHtml += '<td><button type="button" class="btn btn-primary btn-sm filterColor" value=' + color + '>&lt;&lt;</button></td></tr>';
+                sumHtml += '<td><button type="button" class="btn btn-primary btn-sm filterColor" title="只显示所有' + paletteMap.get(color).name + '" value=' + color + '>&lt;&lt;</button></td></tr>';
             else
                 sumHtml += '<td></td></tr>';
         }
@@ -783,9 +851,12 @@
         });
 
         let infoHtml = currentSliceImage ?
-            "第" + (currentSliceImage.y + 1) + "行第" + (currentSliceImage.x + 1) + "列的图块(" + pieceSize + "x" + pieceSize + ")"
-            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ") ," + totolBeadCount + "颗";
-        if (filterColor) infoHtml += "(只显示颜色" + paletteMap.get(filterColor).name + ",#" + filterColor + ",点击大图显示全部)";
+            "图块(" + (currentSliceImage.y + 1) + "," + (currentSliceImage.x + 1) + ") ,(" + pieceSize + "x" + pieceSize + ")"
+            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ")";
+        if (filterColor) {
+            infoHtml += "(只显示<div class='colorBlock' style='background:#" + filterColor + ";color:" + getFontColor(filterColor) + ";'>"
+                + paletteMap.get(filterColor).name + "</div>, 点击大图显示全部)";
+        }
         //显示大图摘要说明
         document.getElementById('largePicInfo').innerHTML = infoHtml;
     }
@@ -793,6 +864,7 @@
     //将大图的一部分绘制到视图
     function showPartView() {
         if (isDrawingViewCanvas) return;
+        $('#loadingMask').modal('show');
         isDrawingViewCanvas = true;
         let largeCtx = largeCanvas.getContext('2d'),
             viewCtx = viewCanvas.getContext('2d');
@@ -805,6 +877,7 @@
         //显示局部标尺
         showPartRulers();
         isDrawingViewCanvas = false;
+        $('#loadingMask').modal('hide');
     }
 
     //绘制完整标尺
@@ -1003,6 +1076,31 @@
                 refreshImage();
             }
         });
+    }
+
+    //替换颜色
+    function replaceColor(fromColor, toColor) {
+        colorReplaceList.set(fromColor, toColor);//添加或更新替换规则
+        //遍历替换列表，将原先目标颜色为fromColor的也换成toColor
+        for (let [oldColor, newColor] of colorReplaceList) {
+            if (newColor == fromColor) colorReplaceList.set(oldColor, toColor);
+        }
+        //遍历像素替换列表，将原先目标颜色为fromColor的也换成toColor
+        for (let [position, colors] of pixelColorReplaceList) {
+            if (colors.new == fromColor) pixelColorReplaceList.set(position, { old: colors.old, new: toColor });
+        }
+    }
+
+    //替换像素颜色
+    function replacePixelColor(x, y, toColor) {
+        let position = x + ',' + y;
+        if (pixelColorReplaceList.has(position)) {
+            pixelColorReplaceList.get(position).new = toColor;//如果已存在此像素规则，只修改新颜色，不修改原始颜色记录
+        }
+        else {
+            let oldColor = getFullImageColor(x, y);
+            pixelColorReplaceList.set(position, { old: oldColor, new: toColor });
+        }
     }
 
     //使用切块坐标获取在全图中的真实坐标
