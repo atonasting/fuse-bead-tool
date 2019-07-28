@@ -269,9 +269,16 @@
                     image.src = e.target.result;
                     image.onload = function (e) {
                         //重加载图片后的完整操作步骤：
-                        //清空缓存和切块图片信息
+                        //清空缓存和各种信息
                         similarColorCache = new Map();
+                        paletteImageData = new Array();
                         sliceImages = new Array();
+                        currentSliceImage = null;
+                        largeCanvasOffsetX = 0;
+                        largeCanvasOffsetY = 0;
+                        colorReplaceList = new Map();
+                        pixelColorReplaceList = new Map();
+                        refreshColorReplaceList();
 
                         //绘制原图
                         originalCanvas.width = this.width;
