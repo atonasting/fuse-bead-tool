@@ -544,7 +544,7 @@
         let pointX = ~~(realClickX / (pixelSize + 1)),
             pointY = ~~(realClickY / (pixelSize + 1));
         let pointColorHex = getViewCanvasColor(pointX, pointY);//显示的颜色
-        if (!pointColorHex) return;//不操作透明像素
+        if (!pointColorHex) return;//不操作透明像素和超出范围的像素
 
         //如果处于笔刷模式则修改像素颜色
         if (isBrushMode) {
@@ -589,7 +589,9 @@
             cursor = (y * pieceSize + x) * 4;
         }
 
-        if (imageData.data[cursor + 3] == 0) return null;
+        if (cursor + 3 >= imageData.data.length) return null;//超出图像范围返回null
+
+        if (imageData.data[cursor + 3] == 0) return null;//透明色返回null
 
         return rgbToHex(imageData.data[cursor], imageData.data[cursor + 1], imageData.data[cursor + 2]);
     }
@@ -645,8 +647,8 @@
         }
 
         //取出裁剪图片的宽高
-        let trimHeight = bound.bottom - bound.top,
-            trimWidth = bound.right - bound.left,
+        let trimHeight = bound.bottom - bound.top + 1,
+            trimWidth = bound.right - bound.left + 1,
             trimmedImage = ctx.getImageData(bound.left, bound.top, trimWidth, trimHeight);
 
         canvas.width = trimWidth;
