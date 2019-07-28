@@ -1,4 +1,4 @@
-var samplePalette = [
+var mardPalette2 = [
     { name: 'A1', color: 'ffeea9' },
     { name: 'A2', color: 'ffffcc' },
     { name: 'A3', color: 'fffa6b' },
@@ -169,7 +169,7 @@ var samplePalette = [
     { name: 'M15', color: '7f7f7f' },
 ];
 
-var oldPalette = [
+var mardPalette1 = [
     { name: 'C1', color: 'd3ffd4' },
     { name: 'B16', color: 'ccffaa' },
     { name: 'B13', color: 'c7ff85' },
