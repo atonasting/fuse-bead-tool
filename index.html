@@ -198,7 +198,6 @@
         dragMinTimeSpan = 20,//拖拽所需的鼠标按下最小时间间隔（ms）
         dragMinDistance = 5;//拖拽所需的鼠标移动最小距离（像素）
 
-    var paletteMap = generatePaletteMap(samplePalette),//调色板对象集合
     var paletteMap = generatePaletteMap(mardPalette2),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
         paletteImageData = new Array(),//存储原始图片替换调色板颜色后的原图
@@ -469,9 +468,9 @@
                     //计算大图偏移值
                     largeCanvasOffsetX = largeCanvasStartOffsetX + mousedownStartX - e.clientX;
                     largeCanvasOffsetY = largeCanvasStartOffsetY + mousedownStartY - e.clientY;
-                    if (largeCanvasOffsetX > largeCanvas.width - viewCanvas.width) largeCanvasOffsetX = largeCanvas.width - viewCanvas.width;
+                    if (largeCanvasOffsetX > largeCanvas.width - viewCanvas.width + 2 * (pixelSize + 1)) largeCanvasOffsetX = largeCanvas.width - viewCanvas.width + 2 * (pixelSize + 1);
                     if (largeCanvasOffsetX < 0) largeCanvasOffsetX = 0;
-                    if (largeCanvasOffsetY > largeCanvas.height - viewCanvas.height) largeCanvasOffsetY = largeCanvas.height - viewCanvas.height;
+                    if (largeCanvasOffsetY > largeCanvas.height - viewCanvas.height + 2 * (pixelSize + 1)) largeCanvasOffsetY = largeCanvas.height - viewCanvas.height + 2 * (pixelSize + 1);
                     if (largeCanvasOffsetY < 0) largeCanvasOffsetY = 0;
                     requestAnimationFrame(function () {
                         showPartView();
