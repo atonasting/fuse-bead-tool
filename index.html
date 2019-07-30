@@ -840,7 +840,7 @@
         let colorSumSorted = new Map([...colorSum.entries()].sort(function (a, b) {
             return b[1] - a[1];
         }));
-        let sumHtml = '';
+        let sumHtml = '<tr><td>合计</td><td>' + totolBeadCount + '</td><td></td></tr>';
         for (let [color, count] of colorSumSorted) {
             sumHtml += '<tr><td style="background:#' + color + ';color:' + getFontColor(color) + ';">' + paletteMap.get(color).name + '</td><td>' + count + '</td>';
             if (color != 'Err')
