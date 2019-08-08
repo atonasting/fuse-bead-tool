@@ -1,6 +1,6 @@
 body{
     margin: 0;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 canvas {
     border:  1px solid #060606;
