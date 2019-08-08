@@ -16,11 +16,30 @@
 <body>
     <div class="card">
         <div class="card-body">
-            <div class="custom-file">
-                <input type="file" class="custom-file-input" id="imageChooser"
-                    accept="image/png, image/jpeg, image/gif" />
-                <label class="custom-file-label" for="imageChooser">选择图片</label>
-            </div>
+            <form>
+                <div class="form-group">
+                    <div class="row">
+                        <label class="col-sm-2 col-form-label">选择图片：</label>
+                        <div class="custom-file col-sm-6">
+                            <input type="file" class="custom-file-input" id="imageChooser"
+                                accept="image/png, image/jpeg, image/gif" />
+                            <label class="custom-file-label" for="imageChooser"></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="row">
+                        <label class="col-sm-2 col-form-label">图块大小：</label>
+                        <select id="pieceSizeSelect" class="form-control col-sm-6">
+                            <option value="20">20x20</option>
+                            <option value="25">25x25</option>
+                            <option value="30">30x30</option>
+                            <option value="40" selected>40x40</option>
+                            <option value="50">50x50</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
     <div id='mainContent'>
@@ -68,31 +87,31 @@
                     <div class="dropdown-menu dropdown-menu-right overflow-auto" aria-labelledby="dropdownColorReplace"
                         style="max-height:800px;">
                         <div class="px-4 py-3">
+                            <button type="button" class="btn btn-danger btn-sm" id="removeAllColorReplace">全部删除</button>
+                            <button type="button" class="btn btn-primary btn-sm"
+                                id="showColorReplaceJsonModel">导入/导出</button>
+                            <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header">全体颜色替换列表</h6>
-                            <table class="table table-sm" style="max-width: 150px;">
+                            <table class="table table-sm" style="max-width: 180px;">
                                 <thead>
                                     <th style="width: 36px;">旧</th>
                                     <th style="width: 36px;">新</th>
-                                    <th style="width: 60px;"></th>
+                                    <th></th>
                                 </thead>
                                 <tbody id="colorReplaceTable">
                                 </tbody>
                             </table>
                             <h6 class="dropdown-header">单个像素颜色替换列表</h6>
-                            <table class="table table-sm">
+                            <table class="table table-sm" style="min-width: 220px;">
                                 <thead>
                                     <th>坐标</th>
                                     <th style="width: 36px;">旧</th>
                                     <th style="width: 36px;">新</th>
-                                    <th style="width: 60px;"></th>
+                                    <th></th>
                                 </thead>
                                 <tbody id="pixelColorReplaceTable">
                                 </tbody>
                             </table>
-                            <div class="dropdown-divider"></div>
-                            <button type="button" class="btn btn-danger btn-sm" id="removeAllColorReplace">全部删除</button>
-                            <button type="button" class="btn btn-primary btn-sm"
-                                id="showColorReplaceJsonModel">导入/导出</button>
                         </div>
                     </div>
                 </div>
@@ -102,7 +121,7 @@
                         颜色统计
                     </button>
                     <div class="dropdown-menu dropdown-menu-right overflow-auto" aria-labelledby="dropdownColorSum"
-                        id="colorSum" style="max-height:800px;min-width: 180px;">
+                        id="colorSum" style="max-height:600px;min-width: 180px;">
                         <table class="table table-sm">
                             <thead>
                                 <th style="width: 36px;">颜色</th>
@@ -194,9 +213,10 @@
 
 <script type="text/javascript">
     const pixelSize = 20,//马赛克像素尺寸（放大倍数）
-        pieceSize = 24,//单块拼板容纳的拼豆数
         dragMinTimeSpan = 20,//拖拽所需的鼠标按下最小时间间隔（ms）
-        dragMinDistance = 5;//拖拽所需的鼠标移动最小距离（像素）
+        dragMinDistance = 8;//拖拽所需的鼠标移动最小距离（像素）
+
+    var pieceSize = 40;//单块拼板容纳的拼豆数
 
     var paletteMap = generatePaletteMap(mardPalette2),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
@@ -256,7 +276,7 @@
             }, false);
 
             //图片加载事件
-            document.getElementById('imageChooser').onchange = function (e) {
+            $('#imageChooser').change(function (e) {
                 $(this).next('.custom-file-label').html(e.target.files[0].name);//bootstrap的file控件不会自动赋值，需要手工显示
                 $('#mainContent').show();
                 if (e.target.files.length <= 0) return;
@@ -298,7 +318,15 @@
                 };
 
                 reader.readAsDataURL(imageFile);
-            };
+            });
+
+            //拼板尺寸变化
+            $('#pieceSizeSelect').change(function (e) {
+                if (this.value && parseInt(this.value)) {
+                    pieceSize = this.value;
+                    if (!$('#mainContent').is(":hidden")) refreshImage();
+                }
+            });
 
             //点击显示全图
             fullCanvas.onclick = function (e) {
@@ -873,7 +901,7 @@
     //将大图的一部分绘制到视图
     function showPartView() {
         if (isDrawingViewCanvas) return;
-        $('#loadingMask').modal('show');
+
         isDrawingViewCanvas = true;
         let largeCtx = largeCanvas.getContext('2d'),
             viewCtx = viewCanvas.getContext('2d');
@@ -886,7 +914,6 @@
         //显示局部标尺
         showPartRulers();
         isDrawingViewCanvas = false;
-        $('#loadingMask').modal('hide');
     }
 
     //绘制完整标尺
@@ -1045,6 +1072,9 @@
             showFullImageView(true);
         }
         else {
+            //如果修改图块大小导致图块下标越界则归零
+            if (currentSliceImage.y >= sliceImages.length) currentSliceImage.y = 0;
+            if (currentSliceImage.x >= sliceImages[0].length) currentSliceImage.x = 0;
             showImageView(sliceImages[currentSliceImage.y][currentSliceImage.x], pieceSize, pieceSize, true);
         }
     }

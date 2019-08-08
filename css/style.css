@@ -1,5 +1,6 @@
 body{
     margin: 0;
+    overflow: hidden;
 }
 canvas {
     border:  1px solid #060606;
@@ -27,6 +28,5 @@ canvas {
 }
 td{
     text-align:center;
-    line-height:32px;
     vertical-align: middle;
 }
