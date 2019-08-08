@@ -214,7 +214,8 @@
 <script type="text/javascript">
     const pixelSize = 20,//马赛克像素尺寸（放大倍数）
         dragMinTimeSpan = 20,//拖拽所需的鼠标按下最小时间间隔（ms）
-        dragMinDistance = 8;//拖拽所需的鼠标移动最小距离（像素）
+        dragMinDistance = 8,//拖拽所需的鼠标移动最小距离（像素）
+        imageSizeLimit = 320;//图片尺寸大小限制
 
     var pieceSize = 40;//单块拼板容纳的拼豆数
 
@@ -283,11 +284,13 @@
                 let imageFile = e.target.files[0];
                 var reader = new FileReader();
                 reader.onload = function (e) {
-                    let originalCtx = originalCanvas.getContext('2d');
-                    originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
                     var image = new Image();
                     image.src = e.target.result;
                     image.onload = function (e) {
+                        if (this.width > imageSizeLimit || this.height > imageSizeLimit) {
+                            alert('图片分辨率' + this.width + 'x' + this.height + '过大，需小于' + imageSizeLimit + 'x' + imageSizeLimit);
+                            return;
+                        }
                         //重加载图片后的完整操作步骤：
                         //清空缓存和各种信息
                         similarColorCache = new Map();
@@ -300,6 +303,8 @@
                         pixelColorReplaceList = new Map();
                         refreshColorReplaceList();
 
+                        let originalCtx = originalCanvas.getContext('2d');
+                        originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
                         //绘制原图
                         originalCanvas.width = this.width;
                         originalCanvas.height = this.height;
