@@ -138,8 +138,8 @@
                     <button type="button" class="btn btn-danger" id="disableBrushMode">退出</button>
                 </div>
             </div>
-            <div class="card-body" style='padding: 0.25rem;'>
-                <canvas id="viewCanvas" style='width: 100%;'></canvas>
+            <div class="card-body" style='padding: 0;'>
+                <canvas id="viewCanvas"></canvas>
             </div>
         </div>
     </div>
@@ -254,7 +254,8 @@
             viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
         originalCanvas.width = 0, originalCanvas.height = 0;
         fullCanvas.width = 0, fullCanvas.height = 0;
-        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
+        let viewCanvasSize = Math.min(window.innerWidth, window.innerHeight);
+        viewCanvas.width = viewCanvasSize, viewCanvas.height = viewCanvasSize;
 
         //显示调色板选色块
         let colorSelector = document.getElementById('colorSelector');
@@ -272,7 +273,8 @@
         {
             //窗口重绘后重设canvas尺寸
             window.addEventListener('resize', function (e) {
-                viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
+                let viewCanvasSize = Math.min(window.innerWidth, window.innerHeight);
+                viewCanvas.width = viewCanvasSize, viewCanvas.height = viewCanvasSize;
                 if (!$('#mainContent').is(":hidden")) refreshImage();
             }, false);
 
