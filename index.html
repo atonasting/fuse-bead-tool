@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拼豆图片生成器</title>
+    <title>拼豆辅助工具</title>
     <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="css/style.css" rel="stylesheet">
     <script src="js/palette.js"></script>
@@ -15,6 +15,14 @@
 
 <body>
     <div class="card">
+        <div class="card-header">
+            <label class="h4">拼豆辅助工具</label>
+            <div class="float-right mx-2">
+                <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank">
+                    <img src='image/GitHub-Mark-64px.png' style='max-height:32px;' />
+                </a>
+            </div>
+        </div>
         <div class="card-body">
             <form>
                 <div class="form-group">
@@ -219,7 +227,7 @@
 
     var pieceSize = 40;//单块拼板容纳的拼豆数
 
-    var paletteMap = generatePaletteMap(mardPalette2),//调色板对象集合
+    var paletteMap = generatePaletteMap(mardPalette),//调色板对象集合
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
         paletteImageData = new Array(),//存储原始图片替换调色板颜色后的原图
         sliceImages = new Array(),//存储所有切块图的二维数组
