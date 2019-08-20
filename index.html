@@ -6,7 +6,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拼豆辅助工具</title>
     <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/css/bootstrap.min.css">
-    <link href="css/style.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        canvas {
+            border: 1px solid #060606;
+        }
+
+        #mainContent {
+            display: none;
+        }
+
+        .colorBlock {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            margin: 2px;
+            vertical-align: top;
+            font: 12px monospace;
+            border: 1px solid #060606;
+        }
+
+        .pointer {
+            cursor: pointer;
+        }
+
+        .colorBlock.selected {
+            border: 3px solid #ff0000;
+        }
+
+        td {
+            text-align: center;
+            vertical-align: middle;
+        }
+    </style>
+
     <script src="js/palette.v1.js"></script>
     <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.4.1.min.js"></script>
     <script src="js/popper.min.js"></script>
