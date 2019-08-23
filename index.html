@@ -296,6 +296,8 @@
         isDrawingViewCanvas = false,//视图是否正在绘制中
         colorSum = new Map();//大图颜色统计
 
+    var scrollbarWidth = getScrollbarWidth();
+
     var rulerX1Canvas, rulerX2Canvas, rulerY1Canvas, rulerY2Canvas;//四个标尺的canvas
 
     $().ready(function () {
@@ -304,8 +306,7 @@
             viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
         originalCanvas.width = 0, originalCanvas.height = 0;
         fullCanvas.width = 0, fullCanvas.height = 0;
-        let viewCanvasSize = Math.min(window.innerWidth, window.innerHeight);
-        viewCanvas.width = viewCanvasSize, viewCanvas.height = viewCanvasSize;
+        viewCanvas.width = window.innerWidth - scrollbarWidth - 4, viewCanvas.height = window.innerHeight - 8;
 
         //显示调色板选色块
         let colorSelector = document.getElementById('colorSelector');
@@ -323,8 +324,7 @@
         {
             //窗口重绘后重设canvas尺寸
             window.addEventListener('resize', function (e) {
-                let viewCanvasSize = Math.min(window.innerWidth, window.innerHeight);
-                viewCanvas.width = viewCanvasSize, viewCanvas.height = viewCanvasSize;
+                viewCanvas.width = window.innerWidth - scrollbarWidth - 2, viewCanvas.height = window.innerHeight - 8;
                 if (!$('#mainContent').is(":hidden")) refreshImage();
             }, false);
 
@@ -964,7 +964,7 @@
             viewCtx = viewCanvas.getContext('2d');
 
         //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
-        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientWidth;
+        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientHeight;
         //切图时要计算两边的标尺长度
         let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
         viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
@@ -1311,6 +1311,28 @@
             gd = g1 - g2,
             bd = b1 - b2;
         return (((512 + rmean) * rd * rd) >> 8) + 4 * gd * gd + (((767 - rmean) * bd * bd) >> 8);
+    }
+
+    //获取滚动条宽度
+    function getScrollbarWidth() {
+        // Creating invisible container
+        const outer = document.createElement('div');
+        outer.style.visibility = 'hidden';
+        outer.style.overflow = 'scroll'; // forcing scrollbar to appear
+        outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+        document.body.appendChild(outer);
+
+        // Creating inner element and placing it in the container
+        const inner = document.createElement('div');
+        outer.appendChild(inner);
+
+        // Calculating difference between container's full width and the child width
+        const scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
+
+        // Removing temporary elements from the DOM
+        outer.parentNode.removeChild(outer);
+
+        return scrollbarWidth;
     }
 </script>
 
