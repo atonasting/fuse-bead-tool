@@ -319,14 +319,13 @@
         viewCanvas.width = window.innerWidth - scrollbarWidth - 4, viewCanvas.height = window.innerHeight - 8;
 
         //显示调色板选色块
-        let colorSelector = document.getElementById('colorSelector');
-        let colorSelectorHtml = "";
+        let colorSelectorHtml = '';
         for (let color of paletteMap.values()) {
             let fontColor = getFontColor(color.r, color.g, color.b);
             let hex = rgbToHex(color.r, color.g, color.b);
             colorSelectorHtml += "<div class='colorBlock pointer' style='background:#" + hex + ";color:" + fontColor + ";' color='" + hex + "' title='#" + hex + "'>" + color.name + "</div>";
         }
-        colorSelector.innerHTML = colorSelectorHtml;
+        $('#colorSelector').html(colorSelectorHtml);
 
         $('#brushToolBar').hide();
 
@@ -391,7 +390,7 @@
             $('#pieceSizeSelect').change(function (e) {
                 if (this.value && parseInt(this.value)) {
                     pieceSize = this.value;
-                    if (!$('#mainContent').is(":hidden")) refreshImage();
+                    if (!$('#mainContent').is(':hidden')) refreshImage();
                 }
             });
 
@@ -401,29 +400,29 @@
             };
 
             //只显示某颜色按钮点击
-            document.getElementById('showSingleColor').onclick = function (e) {
+            $('#showSingleColor').click(function (e) {
                 filterColor = selectedPixel.color;
                 refreshImage();
                 $('#colorModal').modal('hide');
-            }
+            });
 
             //选色器点击
-            $("#colorSelector>div").click(function (e) {
-                $("#colorSelector>div.selected").removeClass("selected");
-                $(this).addClass("selected");
+            $('#colorSelector>div').click(function (e) {
+                $('#colorSelector>div.selected').removeClass('selected');
+                $(this).addClass('selected');
                 //修改按钮标签
                 $('#replaceColor').html('所有' + selectedPixel.name + '换成' + $(this).html());
                 $('#replacePixel').html('此像素换成' + $(this).html());
                 $('#replacePixelBrush').html('使用' + $(this).html() + '笔刷');
                 $('#colorToolBar').css('visibility', 'visible');
 
-                $('#replacePixel').val($(this).attr("color"));
-                $('#replaceColor').val($(this).attr("color"));
-                $('#replacePixelBrush').val($(this).attr("color"));
+                $('#replacePixel').val($(this).attr('color'));
+                $('#replaceColor').val($(this).attr('color'));
+                $('#replacePixelBrush').val($(this).attr('color'));
             });
 
             //替换单个像素按钮点击
-            document.getElementById('replacePixel').onclick = function (e) {
+            $('#replacePixel').click(function (e) {
                 if (!this.value) return;
                 //替换像素坐标使用的是全图真实坐标
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
@@ -431,19 +430,19 @@
                 refreshColorReplaceList();
                 refreshImage();
                 $('#colorModal').modal('hide');
-            };
+            });
 
             //替换相同颜色按钮点击
-            document.getElementById('replaceColor').onclick = function (e) {
+            $('#replaceColor').click(function (e) {
                 if (!this.value) return;
                 replaceColor(selectedPixel.color, this.value);
                 refreshColorReplaceList();
                 refreshImage();
                 $('#colorModal').modal('hide');
-            };
+            });
 
             //进入笔刷模式按钮点击
-            document.getElementById('replacePixelBrush').onclick = function (e) {
+            $('#replacePixelBrush').click(function (e) {
                 if (isBrushMode) return;
                 isBrushMode = true;
                 brushColor = this.value;
@@ -451,37 +450,37 @@
                 $('#brushToolBar').show();
 
                 $('#colorModal').modal('hide');
-            };
+            });
 
             //退出笔刷模式按钮点击
-            document.getElementById('disableBrushMode').onclick = function (e) {
+            $('#disableBrushMode').click(function (e) {
                 isBrushMode = false;
                 brushColor = '';
-                $('#brushInfo').html("");
+                $('#brushInfo').html('');
                 $('#brushToolBar').hide();
-            };
+            });
 
             //关闭颜色对话框
             $('#colorModal').on('hidden.bs.modal', function (e) {
                 //清除当前对话框中的所选值
                 selectedColor = null;
                 $("#colorSelector>div.selected").removeClass("selected");
-                $('#replacePixel').val("");
-                $('#replaceColor').val("");
+                $('#replacePixel').val('');
+                $('#replaceColor').val('');
             });
 
             //移除所有颜色替换选项
-            document.getElementById('removeAllColorReplace').onclick = function (e) {
+            $('#removeAllColorReplace').click(function (e) {
                 colorReplaceList = new Map();
                 pixelColorReplaceList = new Map();
                 refreshColorReplaceList();
                 refreshImage();
-            };
+            });
 
             //颜色替换选项导入/导出按钮
-            document.getElementById('showColorReplaceJsonModel').onclick = function (e) {
+            $('#showColorReplaceJsonModel').click(function (e) {
                 if (pixelColorReplaceList.size == 0 && colorReplaceList.size == 0) {
-                    document.getElementById('colorReplaceJson').value = '';
+                    $('#colorReplaceJson').val('');
                 }
                 else {
                     //生成json
@@ -489,28 +488,28 @@
                         pixelColorReplaceList: [...pixelColorReplaceList],
                         colorReplaceList: [...colorReplaceList]
                     };
-                    document.getElementById('colorReplaceJson').value = JSON.stringify(jsonObj);
+                    $('#colorReplaceJson').val(JSON.stringify(jsonObj));
                 }
 
                 $("#copySuccessAlert").hide();
                 $("#importErrorAlert").hide();
                 $('#colorReplaceJsonModal').modal('show');
-            }
+            });
 
             //复制颜色替换选项json到剪贴板
-            document.getElementById('copyColorReplaceJson').onclick = function (e) {
-                if (document.getElementById("colorReplaceJson").value.trim().length == 0) return;
+            $('#copyColorReplaceJson').click(function (e) {
+                if ($('#colorReplaceJson').val().trim().length == 0) return;
 
-                document.getElementById("colorReplaceJson").select();
+                $('#colorReplaceJson').select();
                 document.execCommand("Copy");//执行浏览器复制命令
                 $("#copySuccessAlert").show().delay(2000).slideUp(200, function () {
                     $(this).hide();
                 });
-            };
+            });
 
             //导入颜色替换选项
-            document.getElementById('importColorReplaceJson').onclick = function (e) {
-                let json = document.getElementById('colorReplaceJson').value;
+            $('#importColorReplaceJson').click(function (e) {
+                let json = $('#colorReplaceJson').val();
                 if (!json) return;
                 try {
                     let jsonObj = JSON.parse(json);
@@ -533,7 +532,7 @@
                         $(this).alert('close');
                     });
                 }
-            };
+            });
 
         }
 
@@ -661,19 +660,21 @@
         let pointColor = paletteMap.get(pointColorHex);
         if (sourceColorHex == pointColorHex) {
             //未换色的情况
-            document.getElementById("colorInfo").innerHTML = " <strong>颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex) + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex;
+            $('#colorInfo').html(" <strong>颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
+                + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex);
         }
         else {
             //换色的情况
             let sourceColor = paletteMap.get(sourceColorHex);
-            document.getElementById("colorInfo").innerHTML = " <strong>当前颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex) + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex
-                + " <strong>原始颜色</strong><div class='colorBlock' style='color:" + getFontColor(sourceColorHex) + "; background:#" + sourceColorHex + ";'>" + sourceColor.name + "</div>#" + sourceColorHex;
-
+            $('#colorInfo').html(" <strong>当前颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
+                + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex
+                + " <strong>原始颜色</strong><div class='colorBlock' style='color:" + getFontColor(sourceColorHex)
+                + "; background:#" + sourceColorHex + ";'>" + sourceColor.name + "</div>#" + sourceColorHex);
         }
 
         selectedPixel = { x: pointX, y: pointY, color: pointColorHex, name: pointColor.name };
-        document.getElementById("showSingleColor").innerHTML = '只显示' + colorSum.get(pointColorHex) + '个' + pointColor.name;
-        document.getElementById("pointDialogTitle").innerHTML = "<strong>大图坐标</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")";
+        $('#showSingleColor').html('只显示' + colorSum.get(pointColorHex) + '个' + pointColor.name);
+        $('#pointDialogTitle').html("<strong>大图坐标</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")");
         $('#colorToolBar').css('visibility', 'hidden');//占位隐藏工具栏
         $('#colorModal').modal('show');
     }
@@ -802,7 +803,7 @@
             colCount = Math.ceil(canvas.width / pieceSize);//分割列数
 
         //生成table和image标签
-        let tableHtml = "";
+        let tableHtml = '';
         for (let y = 0; y < rowCount; y++) {
             tableHtml += "<tr>";
             for (let x = 0; x < colCount; x++) {
@@ -810,7 +811,7 @@
             }
             tableHtml += "</tr>";
         }
-        document.getElementById(sliceContainerName).innerHTML = tableHtml;
+        $('#' + sliceContainerName).html(tableHtml);
 
         //生成临时Canvas用于转换分割小图
         let tempCanvas = document.createElement('canvas'),
@@ -836,12 +837,12 @@
                 tempCtx.putImageData(imageData, 0, 0);
                 tempCtx.fillText((y + 1) + ',' + (x + 1), pieceSize, pieceSize);
                 let tempImageURL = tempCanvas.toDataURL("image/png");
-                let img = document.getElementById("sliceImage-" + y + "_" + x);
-                img.src = tempImageURL;
-                img.onclick = function () {
+                let img = $('#sliceImage-' + y + '_' + x);
+                img.attr('src', tempImageURL);
+                img.click(function () {
                     currentSliceImage = { x: x, y: y };
                     showImageView(sliceImages[y][x]);
-                };
+                });
             }
         }
     }
@@ -943,7 +944,7 @@
             else
                 sumHtml += '<td></td></tr>';
         }
-        document.getElementById('colorSumTable').innerHTML = sumHtml;
+        $('#colorSumTable').html(sumHtml);
 
         //绑定颜色筛选事件
         $('.filterColor').click(function (e) {
@@ -962,7 +963,7 @@
                 + paletteMap.get(filterColor).name + "</div>, 点击大图显示全部)";
         }
         //显示大图摘要说明
-        document.getElementById('largePicInfo').innerHTML = infoHtml;
+        $('#largePicInfo').html(infoHtml);
     }
 
     //将大图的一部分绘制到视图
@@ -1159,7 +1160,7 @@
             pixelColorReplaceHtml += '<td style="background:#' + colors.new + ';color:' + getFontColor(colors.new) + ';">' + paletteMap.get(colors.new).name + '</td>';
             pixelColorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-pixel-color-replace" value=' + position + '>删除</button></td></tr>';
         }
-        document.getElementById('pixelColorReplaceTable').innerHTML = pixelColorReplaceHtml;
+        $('#pixelColorReplaceTable').html(pixelColorReplaceHtml);
 
         let colorReplaceHtml = '';
         for (let [oldColor, newColor] of colorReplaceList) {
@@ -1167,7 +1168,7 @@
             colorReplaceHtml += '<td style="background:#' + newColor + ';color:' + getFontColor(newColor) + ';">' + paletteMap.get(newColor).name + '</td>';
             colorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-color-replace" value=' + oldColor + '>删除</button></td></tr>';
         }
-        document.getElementById('colorReplaceTable').innerHTML = colorReplaceHtml;
+        $('#colorReplaceTable').html(colorReplaceHtml);
 
         //绑定删除按钮点击事件
         $(".remove-color-replace").click(function () {
