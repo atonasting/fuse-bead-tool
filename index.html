@@ -275,7 +275,7 @@
     const pixelSize = 20,//马赛克像素尺寸（放大倍数）
         dragMinTimeSpan = 20,//拖拽所需的鼠标按下最小时间间隔（ms）
         dragMinDistance = 8,//拖拽所需的鼠标移动最小距离（像素）
-        imageSizeLimit = 320;//图片尺寸大小限制
+        imageSizeLimit = 500;//图片尺寸大小限制
 
     var pieceSize = 40;//单块拼板容纳的拼豆数
 
@@ -314,9 +314,9 @@
         var originalCanvas = document.getElementById('originalCanvas'),//原始图片canvas
             fullCanvas = document.getElementById('fullCanvas'),//完整图片canvas
             viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
-        originalCanvas.width = 0, originalCanvas.height = 0;
-        fullCanvas.width = 0, fullCanvas.height = 0;
-        viewCanvas.width = window.innerWidth - scrollbarWidth - 4, viewCanvas.height = window.innerHeight - 8;
+        // originalCanvas.width = 0, originalCanvas.height = 0;
+        // fullCanvas.width = 0, fullCanvas.height = 0;
+        // viewCanvas.width = window.innerWidth - scrollbarWidth - 4, viewCanvas.height = window.innerHeight - 8;
 
         //显示调色板选色块
         let colorSelectorHtml = '';
@@ -333,8 +333,11 @@
         {
             //窗口重绘后重设canvas尺寸
             window.addEventListener('resize', function (e) {
-                viewCanvas.width = window.innerWidth - scrollbarWidth - 2, viewCanvas.height = window.innerHeight - 8;
-                if (!$('#mainContent').is(":hidden")) refreshImage();
+                // viewCanvas.width = window.innerWidth - scrollbarWidth - 2, viewCanvas.height = window.innerHeight - 8;
+                if (!$('#mainContent').is(":hidden")) {
+                    resizeViewCanvasFitWindow();
+                    refreshImage();
+                }
             }, false);
 
             //图片加载事件
@@ -389,8 +392,11 @@
             //拼板尺寸变化
             $('#pieceSizeSelect').change(function (e) {
                 if (this.value && parseInt(this.value)) {
-                    pieceSize = this.value;
-                    if (!$('#mainContent').is(':hidden')) refreshImage();
+                    pieceSize = parseInt(this.value);
+                    if (!$('#mainContent').is(':hidden')) {
+                        resizeViewCanvasFitWindow();
+                        refreshImage();
+                    }
                 }
             });
 
@@ -929,6 +935,8 @@
             largeCanvasStartOffsetX = 0, largeCanvasStartOffsetY = 0;
             largeCanvasOffsetX = 0, largeCanvasOffsetY = 0;
         }
+
+        resizeViewCanvasFitWindow();
         //绘制部分图像到viewCanvas
         showPartView();
 
@@ -1322,6 +1330,19 @@
             gd = g1 - g2,
             bd = b1 - b2;
         return (((512 + rmean) * rd * rd) >> 8) + 4 * gd * gd + (((767 - rmean) * bd * bd) >> 8);
+    }
+
+    //使canvas的尺寸与屏幕大小一致并且不超过当前大图尺寸
+    function resizeViewCanvasFitWindow() {
+        if (!currentSliceImage) {//使用完整图的尺寸
+            viewCanvas.width = Math.min(window.innerWidth - scrollbarWidth - 4, (originalCanvas.width + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min(window.innerHeight - 8, (originalCanvas.height + 2) * (pixelSize + 1));
+        }
+        else//使用单个图块的尺寸
+        {
+            viewCanvas.width = Math.min(window.innerWidth - scrollbarWidth - 4, (pieceSize + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min(window.innerHeight - 8, (pieceSize + 2) * (pixelSize + 1));
+        }
     }
 
     //获取滚动条宽度
