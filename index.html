@@ -264,7 +264,10 @@
         <div class="modal-dialog" role="document">
              <div class="modal-content">
                 <div class="modal-body">
-                    Loading...
+                    <div
+                        style="display: flex; flex-direction: column;justify-content: center;height:100%;width: 100%;text-align: center;">
+                        <h1>绘制中...</h1>
+                    </div>
                 </div>
             </div>
         </div>
@@ -979,17 +982,20 @@
         if (isDrawingViewCanvas) return;
 
         isDrawingViewCanvas = true;
-        let largeCtx = largeCanvas.getContext('2d'),
-            viewCtx = viewCanvas.getContext('2d');
+        showLoadingMask(function () {
+            let largeCtx = largeCanvas.getContext('2d'),
+                viewCtx = viewCanvas.getContext('2d');
 
-        //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
-        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientHeight;
-        //切图时要计算两边的标尺长度
-        let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
-        viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
-        //显示局部标尺
-        showPartRulers();
-        isDrawingViewCanvas = false;
+            //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
+            viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientHeight;
+            //切图时要计算两边的标尺长度
+            let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
+            viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
+            //显示局部标尺
+            showPartRulers();
+            isDrawingViewCanvas = false;
+
+        });
     }
 
     //绘制完整标尺
@@ -1365,6 +1371,17 @@
         outer.parentNode.removeChild(outer);
 
         return scrollbarWidth;
+    }
+
+    //显示遮罩并执行代码，执行完后隐藏遮罩
+    function showLoadingMask(method) {
+        if (method) {
+            $('#loadingMask').one('shown.bs.modal', function (e) {
+                method();
+                $('#loadingMask').modal('hide');
+            });
+            $('#loadingMask').modal('show');
+        }
     }
 </script>
 
