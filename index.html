@@ -417,21 +417,21 @@
             });
 
             //点击显示全图
-            fullCanvas.onclick = function (e) {
+            $(fullCanvas).on('click tap', function (e) {
                 showLoadingMask(() => {
                     showFullImageView();
                 });
-            };
+            });
 
             //只显示某颜色按钮点击
-            $('#showSingleColor').click(function (e) {
+            $('#showSingleColor').on('click tap', function (e) {
                 filterColor = selectedPixel.color;
                 refreshImage();
                 $('#colorModal').modal('hide');
             });
 
             //选色器点击
-            $('#colorSelector>div').click(function (e) {
+            $('#colorSelector>div').on('click tap', function (e) {
                 $('#colorSelector>div.selected').removeClass('selected');
                 $(this).addClass('selected');
                 //修改按钮标签
@@ -446,7 +446,7 @@
             });
 
             //替换单个像素按钮点击
-            $('#replacePixel').click(function (e) {
+            $('#replacePixel').on('click tap', function (e) {
                 if (!this.value) return;
                 //替换像素坐标使用的是全图真实坐标
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
@@ -457,7 +457,7 @@
             });
 
             //替换相同颜色按钮点击
-            $('#replaceColor').click(function (e) {
+            $('#replaceColor').on('click tap', function (e) {
                 if (!this.value) return;
                 replaceColor(selectedPixel.color, this.value);
                 refreshColorReplaceList();
@@ -466,7 +466,7 @@
             });
 
             //进入笔刷模式按钮点击
-            $('#replacePixelBrush').click(function (e) {
+            $('#replacePixelBrush').on('click tap', function (e) {
                 if (isBrushMode) return;
                 isBrushMode = true;
                 brushColor = this.value;
@@ -477,7 +477,7 @@
             });
 
             //退出笔刷模式按钮点击
-            $('#disableBrushMode').click(function (e) {
+            $('#disableBrushMode').on('click tap', function (e) {
                 isBrushMode = false;
                 brushColor = '';
                 $('#brushInfo').html('');
@@ -494,7 +494,7 @@
             });
 
             //移除所有颜色替换选项
-            $('#removeAllColorReplace').click(function (e) {
+            $('#removeAllColorReplace').on('click tap', function (e) {
                 colorReplaceList = new Map();
                 pixelColorReplaceList = new Map();
                 refreshColorReplaceList();
@@ -502,7 +502,7 @@
             });
 
             //颜色替换选项导入/导出按钮
-            $('#showColorReplaceJsonModel').click(function (e) {
+            $('#showColorReplaceJsonModel').on('click tap', function (e) {
                 if (pixelColorReplaceList.size == 0 && colorReplaceList.size == 0) {
                     $('#colorReplaceJson').val('');
                 }
@@ -521,7 +521,7 @@
             });
 
             //复制颜色替换选项json到剪贴板
-            $('#copyColorReplaceJson').click(function (e) {
+            $('#copyColorReplaceJson').on('click tap', function (e) {
                 if ($('#colorReplaceJson').val().trim().length == 0) return;
 
                 $('#colorReplaceJson').select();
@@ -532,7 +532,7 @@
             });
 
             //导入颜色替换选项
-            $('#importColorReplaceJson').click(function (e) {
+            $('#importColorReplaceJson').on('click tap', function (e) {
                 let json = $('#colorReplaceJson').val();
                 if (!json) return;
                 try {
@@ -973,7 +973,7 @@
         $('#colorSumTable').html(sumHtml);
 
         //绑定颜色筛选事件
-        $('.filterColor').click(function (e) {
+        $('.filterColor').on('click tap', function (e) {
             let color = $(this).attr('value');
             if (color && color != 'Err') {
                 filterColor = color;
@@ -1199,7 +1199,7 @@
         $('#colorReplaceTable').html(colorReplaceHtml);
 
         //绑定删除按钮点击事件
-        $(".remove-color-replace").click(function () {
+        $(".remove-color-replace").on('click tap', function () {
             let color = $(this).attr('value');
             if (colorReplaceList.has(color)) {
                 colorReplaceList.delete(color);
@@ -1207,7 +1207,7 @@
                 refreshImage();
             }
         });
-        $(".remove-pixel-color-replace").click(function () {
+        $(".remove-pixel-color-replace").on('click tap', function () {
             let position = $(this).attr('value');
             if (pixelColorReplaceList.has(position)) {
                 pixelColorReplaceList.delete(position);
@@ -1355,13 +1355,13 @@
     //使canvas的尺寸与屏幕大小一致并且不超过当前大图尺寸
     function resizeViewCanvasFitWindow() {
         if (!currentSliceImage) {//使用完整图的尺寸
-            viewCanvas.width = Math.min(document.body.clientWidth - scrollbarWidth - 4, (originalCanvas.width + 2) * (pixelSize + 1));
-            viewCanvas.height = Math.min(document.body.clientHeight - 8, (originalCanvas.height + 2) * (pixelSize + 1));
+            viewCanvas.width = Math.min($(window).width() - scrollbarWidth - 4, (originalCanvas.width + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min($(window).height() - 8, (originalCanvas.height + 2) * (pixelSize + 1));
         }
         else//使用单个图块的尺寸
         {
-            viewCanvas.width = Math.min(document.body.clientWidth - scrollbarWidth - 4, (pieceSize + 2) * (pixelSize + 1));
-            viewCanvas.height = Math.min(document.body.clientHeight - 8, (pieceSize + 2) * (pixelSize + 1));
+            viewCanvas.width = Math.min($(window).width() - scrollbarWidth - 4, (pieceSize + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min($(window).height() - 8, (pieceSize + 2) * (pixelSize + 1));
         }
     }
 
@@ -1390,11 +1390,11 @@
     //显示遮罩并执行代码，执行完后隐藏遮罩
     function showLoadingMask(method) {
         if (method) {
-            $('#loadingMask').one('shown.bs.modal', function (e) {
+            $('#loadingMask').one('show.bs.modal', function (e) {
                 setTimeout(() => {
                     method();
                     $('#loadingMask').modal('hide');
-                }, 10);
+                }, 100);
             });
             $('#loadingMask').modal('show');
         }
