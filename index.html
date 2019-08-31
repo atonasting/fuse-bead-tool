@@ -54,6 +54,13 @@
             text-align: center;
             vertical-align: middle;
         }
+
+        .mask {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
     </style>
 
     <script src="js/palette.v1.js"></script>
@@ -264,9 +271,11 @@
         <div class="modal-dialog" role="document">
              <div class="modal-content">
                 <div class="modal-body">
-                    <div
-                        style="display: flex; flex-direction: column;justify-content: center;height:100%;width: 100%;text-align: center;">
-                        <h1>绘制中...</h1>
+                    <div class="mask">
+                        <div class="spinner-border text-dark m-3" role="status">
+                            <span class="sr-only"></span>
+                        </div>
+                        <span class="h1"> 绘制中...</span>
                     </div>
                 </div>
             </div>
@@ -317,9 +326,6 @@
         var originalCanvas = document.getElementById('originalCanvas'),//原始图片canvas
             fullCanvas = document.getElementById('fullCanvas'),//完整图片canvas
             viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
-        // originalCanvas.width = 0, originalCanvas.height = 0;
-        // fullCanvas.width = 0, fullCanvas.height = 0;
-        // viewCanvas.width = window.innerWidth - scrollbarWidth - 4, viewCanvas.height = window.innerHeight - 8;
 
         //显示调色板选色块
         let colorSelectorHtml = '';
@@ -346,7 +352,6 @@
             //图片加载事件
             $('#imageChooser').change(function (e) {
                 $(this).next('.custom-file-label').html(e.target.files[0].name);//bootstrap的file控件不会自动赋值，需要手工显示
-                $('#mainContent').show();
                 if (e.target.files.length <= 0) return;
                 let imageFile = e.target.files[0];
                 var reader = new FileReader();
@@ -358,32 +363,36 @@
                             alert('图片分辨率' + this.width + 'x' + this.height + '过大，需小于' + imageSizeLimit + 'x' + imageSizeLimit);
                             return;
                         }
-                        //重加载图片后的完整操作步骤：
-                        //清空缓存和各种信息
-                        similarColorCache = new Map();
-                        paletteImageData = new Array();
-                        sliceImages = new Array();
-                        currentSliceImage = null;
-                        largeCanvasOffsetX = 0;
-                        largeCanvasOffsetY = 0;
-                        colorReplaceList = new Map();
-                        pixelColorReplaceList = new Map();
-                        refreshColorReplaceList();
+                        showLoadingMask(() => {
+                            //重加载图片后的完整操作步骤：
+                            //清空缓存和各种信息
+                            similarColorCache = new Map();
+                            paletteImageData = new Array();
+                            sliceImages = new Array();
+                            currentSliceImage = null;
+                            largeCanvasOffsetX = 0;
+                            largeCanvasOffsetY = 0;
+                            colorReplaceList = new Map();
+                            pixelColorReplaceList = new Map();
+                            refreshColorReplaceList();
 
-                        let originalCtx = originalCanvas.getContext('2d');
-                        originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
-                        //绘制原图
-                        originalCanvas.width = this.width;
-                        originalCanvas.height = this.height;
-                        originalCtx.drawImage(this, 0, 0);
-                        //切掉原图白色和透明边
-                        trimCanvas(originalCanvas);
-                        //将原图颜色换成最相近的调色板颜色
-                        toPaletteColor(originalCanvas, fullCanvas);
-                        //将完整图片切成图块
-                        sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
-                        //显示完整图片对应的马赛克大图
-                        showFullImageView();
+                            $('#mainContent').show();
+
+                            let originalCtx = originalCanvas.getContext('2d');
+                            originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+                            //绘制原图
+                            originalCanvas.width = this.width;
+                            originalCanvas.height = this.height;
+                            originalCtx.drawImage(this, 0, 0);
+                            //切掉原图白色和透明边
+                            trimCanvas(originalCanvas);
+                            //将原图颜色换成最相近的调色板颜色
+                            toPaletteColor(originalCanvas, fullCanvas);
+                            //将完整图片切成图块
+                            sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
+                            //显示完整图片对应的马赛克大图
+                            showFullImageView();
+                        });
                     }
                     // 清空图片上传框的值
                     imageChooser.value = '';
@@ -405,7 +414,9 @@
 
             //点击显示全图
             fullCanvas.onclick = function (e) {
-                showFullImageView();
+                showLoadingMask(() => {
+                    showFullImageView();
+                });
             };
 
             //只显示某颜色按钮点击
@@ -653,19 +664,23 @@
         //实际像素坐标
         let pointX = ~~(realClickX / (pixelSize + 1)),
             pointY = ~~(realClickY / (pixelSize + 1));
-        let pointColorHex = getViewCanvasColor(pointX, pointY);//显示的颜色
+
+        //全图真实坐标
+        let realPosition = getRealPosition(pointX, pointY);
+
+        let pointColorHex = getFullCanvasColor(realPosition.x, realPosition.y);//显示的颜色
         if (!pointColorHex) return;//不操作透明像素和超出范围的像素
+
 
         //如果处于笔刷模式则修改像素颜色
         if (isBrushMode) {
-            let realPosition = getRealPosition(pointX, pointY);
             replacePixelColor(realPosition.x, realPosition.y, brushColor);
             refreshColorReplaceList();
             refreshImage();
             return;
         }
 
-        let sourceColorHex = getFullImageColor(pointX, pointY);//原始颜色
+        let sourceColorHex = getFullImageColor(realPosition.x, realPosition.y);//原始颜色
         let pointColor = paletteMap.get(pointColorHex);
         if (sourceColorHex == pointColorHex) {
             //未换色的情况
@@ -688,18 +703,13 @@
         $('#colorModal').modal('show');
     }
 
-    //获取大图指定坐标点对应的图片色值
-    function getViewCanvasColor(x, y) {
+    //获取全图指定坐标点对应的图片色值
+    function getFullCanvasColor(x, y) {
         //根据当前显示的是全图还是切块，读取坐标所在rgb数据
         let imageData, cursor;
-        if (!currentSliceImage) {
-            let fullCtx = fullCanvas.getContext('2d');
-            imageData = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
-            cursor = (y * fullCanvas.width + x) * 4;
-        } else {
-            imageData = sliceImages[currentSliceImage.y][currentSliceImage.x];
-            cursor = (y * pieceSize + x) * 4;
-        }
+        let fullCtx = fullCanvas.getContext('2d');
+        imageData = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
+        cursor = (y * fullCanvas.width + x) * 4;
 
         if (cursor + 3 >= imageData.data.length) return null;//超出图像范围返回null
 
@@ -710,8 +720,7 @@
 
     //获取换色原始图指定坐标点对应的图片色值
     function getFullImageColor(x, y) {
-        let realPosition = getRealPosition(x, y);
-        let cursor = (realPosition.y * paletteImageData.width + realPosition.x) * 4;
+        let cursor = (y * paletteImageData.width + x) * 4;
         if (paletteImageData.data[cursor + 3] == 0) return null;
 
         return rgbToHex(paletteImageData.data[cursor], paletteImageData.data[cursor + 1], paletteImageData.data[cursor + 2]);
@@ -849,8 +858,10 @@
                 let img = $('#sliceImage-' + y + '_' + x);
                 img.attr('src', tempImageURL);
                 img.click(function () {
-                    currentSliceImage = { x: x, y: y };
-                    showImageView(sliceImages[y][x]);
+                    showLoadingMask(() => {
+                        currentSliceImage = { x: x, y: y };
+                        showImageView(sliceImages[y][x]);
+                    });
                 });
             }
         }
@@ -982,20 +993,17 @@
         if (isDrawingViewCanvas) return;
 
         isDrawingViewCanvas = true;
-        showLoadingMask(function () {
-            let largeCtx = largeCanvas.getContext('2d'),
-                viewCtx = viewCanvas.getContext('2d');
+        let largeCtx = largeCanvas.getContext('2d'),
+            viewCtx = viewCanvas.getContext('2d');
 
-            //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
-            viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientHeight;
-            //切图时要计算两边的标尺长度
-            let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
-            viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
-            //显示局部标尺
-            showPartRulers();
-            isDrawingViewCanvas = false;
-
-        });
+        //重绘后重新计算一次尺寸，避免滚动条影响宽度，使canvas的width和实际宽度不一致
+        viewCanvas.width = viewCanvas.clientWidth, viewCanvas.height = viewCanvas.clientHeight;
+        //切图时要计算两边的标尺长度
+        let viewImageData = largeCtx.getImageData(largeCanvasOffsetX, largeCanvasOffsetY, viewCanvas.width - 2 * (pixelSize + 1), viewCanvas.height - 2 * (pixelSize + 1));
+        viewCtx.putImageData(viewImageData, pixelSize + 1, pixelSize + 1);
+        //显示局部标尺
+        showPartRulers();
+        isDrawingViewCanvas = false;
     }
 
     //绘制完整标尺
@@ -1095,70 +1103,72 @@
 
     //刷新图片（修改显示像素或者替换颜色之后，保持当前视角不变进行刷新）
     function refreshImage() {
-        let ctx = fullCanvas.getContext('2d'),
-            newImageData = ctx.createImageData(paletteImageData);//新建一份原尺寸的透明图形数据
+        showLoadingMask(() => {
+            let ctx = fullCanvas.getContext('2d'),
+                newImageData = ctx.createImageData(paletteImageData);//新建一份原尺寸的透明图形数据
 
-        //逐像素读取替换调色板后的原图
-        for (let i = 0; i < paletteImageData.data.length; i += 4) {
-            //如果透明则跳过
-            let a = paletteImageData.data[i + 3];
-            if (a == 0) continue;
+            //逐像素读取替换调色板后的原图
+            for (let i = 0; i < paletteImageData.data.length; i += 4) {
+                //如果透明则跳过
+                let a = paletteImageData.data[i + 3];
+                if (a == 0) continue;
 
-            //获取颜色值
-            let r = paletteImageData.data[i];
-            let g = paletteImageData.data[i + 1];
-            let b = paletteImageData.data[i + 2];
-            let hex = rgbToHex(r, g, b);
+                //获取颜色值
+                let r = paletteImageData.data[i];
+                let g = paletteImageData.data[i + 1];
+                let b = paletteImageData.data[i + 2];
+                let hex = rgbToHex(r, g, b);
 
-            //计算坐标
-            let x = (i / 4) % paletteImageData.width;
-            let y = ~~((i / 4) / paletteImageData.width);
+                //计算坐标
+                let x = (i / 4) % paletteImageData.width;
+                let y = ~~((i / 4) / paletteImageData.width);
 
-            //检查像素替换颜色
-            if (pixelColorReplaceList.has(x + ',' + y)) {
-                let replaceColor = pixelColorReplaceList.get(x + ',' + y).new;
-                let replaceColorRgb = hexToRgb(replaceColor);
-                hex = replaceColor;
-                r = replaceColorRgb.r;
-                g = replaceColorRgb.g;
-                b = replaceColorRgb.b;
+                //检查像素替换颜色
+                if (pixelColorReplaceList.has(x + ',' + y)) {
+                    let replaceColor = pixelColorReplaceList.get(x + ',' + y).new;
+                    let replaceColorRgb = hexToRgb(replaceColor);
+                    hex = replaceColor;
+                    r = replaceColorRgb.r;
+                    g = replaceColorRgb.g;
+                    b = replaceColorRgb.b;
+                }
+                //检查替换颜色
+                else if (colorReplaceList.has(hex)) {
+                    let replaceColor = colorReplaceList.get(hex);
+                    let replaceColorRgb = hexToRgb(replaceColor);
+                    hex = replaceColor;
+                    r = replaceColorRgb.r;
+                    g = replaceColorRgb.g;
+                    b = replaceColorRgb.b;
+                }
+
+                //如果启用过滤颜色则只显示此颜色
+                if (filterColor && filterColor != hex) continue;
+
+                //设置新图像素点
+                newImageData.data[i] = r;
+                newImageData.data[i + 1] = g;
+                newImageData.data[i + 2] = b;
+                newImageData.data[i + 3] = 255;//处理后一律变成不透明色
             }
-            //检查替换颜色
-            else if (colorReplaceList.has(hex)) {
-                let replaceColor = colorReplaceList.get(hex);
-                let replaceColorRgb = hexToRgb(replaceColor);
-                hex = replaceColor;
-                r = replaceColorRgb.r;
-                g = replaceColorRgb.g;
-                b = replaceColorRgb.b;
+
+            //绘制过滤替换后的新图
+            ctx.putImageData(newImageData, 0, 0);
+
+            //将完整图片切成图块
+            sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
+
+            //根据当前显示的是全图或图块显示视图
+            if (!currentSliceImage) {
+                showFullImageView(true);
             }
-
-            //如果启用过滤颜色则只显示此颜色
-            if (filterColor && filterColor != hex) continue;
-
-            //设置新图像素点
-            newImageData.data[i] = r;
-            newImageData.data[i + 1] = g;
-            newImageData.data[i + 2] = b;
-            newImageData.data[i + 3] = 255;//处理后一律变成不透明色
-        }
-
-        //绘制过滤替换后的新图
-        ctx.putImageData(newImageData, 0, 0);
-
-        //将完整图片切成图块
-        sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
-
-        //根据当前显示的是全图或图块显示视图
-        if (!currentSliceImage) {
-            showFullImageView(true);
-        }
-        else {
-            //如果修改图块大小导致图块下标越界则归零
-            if (currentSliceImage.y >= sliceImages.length) currentSliceImage.y = 0;
-            if (currentSliceImage.x >= sliceImages[0].length) currentSliceImage.x = 0;
-            showImageView(sliceImages[currentSliceImage.y][currentSliceImage.x], pieceSize, pieceSize, true);
-        }
+            else {
+                //如果修改图块大小导致图块下标越界则归零
+                if (currentSliceImage.y >= sliceImages.length) currentSliceImage.y = 0;
+                if (currentSliceImage.x >= sliceImages[0].length) currentSliceImage.x = 0;
+                showImageView(sliceImages[currentSliceImage.y][currentSliceImage.x], pieceSize, pieceSize, true);
+            }
+        });
     }
 
     //刷新颜色替换列表
@@ -1377,8 +1387,10 @@
     function showLoadingMask(method) {
         if (method) {
             $('#loadingMask').one('shown.bs.modal', function (e) {
-                method();
-                $('#loadingMask').modal('hide');
+                setTimeout(() => {
+                    method();
+                    $('#loadingMask').modal('hide');
+                }, 10);
             });
             $('#loadingMask').modal('show');
         }
