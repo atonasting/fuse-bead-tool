@@ -425,9 +425,9 @@
 
             //只显示某颜色按钮点击
             $('#showSingleColor').on('click tap', function (e) {
+                $('#colorModal').modal('hide');
                 filterColor = selectedPixel.color;
                 refreshImage();
-                $('#colorModal').modal('hide');
             });
 
             //选色器点击
@@ -447,33 +447,33 @@
 
             //替换单个像素按钮点击
             $('#replacePixel').on('click tap', function (e) {
+                $('#colorModal').modal('hide');
                 if (!this.value) return;
                 //替换像素坐标使用的是全图真实坐标
                 let position = getRealPosition(selectedPixel.x, selectedPixel.y);
                 replacePixelColor(position.x, position.y, this.value);
                 refreshColorReplaceList();
                 refreshImage();
-                $('#colorModal').modal('hide');
             });
 
             //替换相同颜色按钮点击
             $('#replaceColor').on('click tap', function (e) {
+                $('#colorModal').modal('hide');
                 if (!this.value) return;
                 replaceColor(selectedPixel.color, this.value);
                 refreshColorReplaceList();
                 refreshImage();
-                $('#colorModal').modal('hide');
             });
 
             //进入笔刷模式按钮点击
             $('#replacePixelBrush').on('click tap', function (e) {
                 if (isBrushMode) return;
+
+                $('#colorModal').modal('hide');
                 isBrushMode = true;
                 brushColor = this.value;
                 $('#brushInfo').html("笔刷模式:<div class='colorBlock' style='color:" + getFontColor(brushColor) + "; background:#" + brushColor + ";'>" + paletteMap.get(brushColor).name + "</div>");
                 $('#brushToolBar').show();
-
-                $('#colorModal').modal('hide');
             });
 
             //退出笔刷模式按钮点击
