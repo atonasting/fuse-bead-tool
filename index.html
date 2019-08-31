@@ -340,9 +340,13 @@
 
         //事件绑定
         {
+            var lastWindowWidth = window.innerWidth;
             //窗口重绘后重设canvas尺寸
             window.addEventListener('resize', function (e) {
-                // viewCanvas.width = window.innerWidth - scrollbarWidth - 2, viewCanvas.height = window.innerHeight - 8;
+                //只有宽度真正改变时才继续，阻止移动设备上的拖拽误触发resize事件
+                if (lastWindowWidth == window.innerWidth) return;
+                lastWindowWidth = window.innerWidth;
+
                 if (!$('#mainContent').is(":hidden")) {
                     resizeViewCanvasFitWindow();
                     refreshImage();
@@ -1351,13 +1355,13 @@
     //使canvas的尺寸与屏幕大小一致并且不超过当前大图尺寸
     function resizeViewCanvasFitWindow() {
         if (!currentSliceImage) {//使用完整图的尺寸
-            viewCanvas.width = Math.min(window.innerWidth - scrollbarWidth - 4, (originalCanvas.width + 2) * (pixelSize + 1));
-            viewCanvas.height = Math.min(window.innerHeight - 8, (originalCanvas.height + 2) * (pixelSize + 1));
+            viewCanvas.width = Math.min(document.body.clientWidth - scrollbarWidth - 4, (originalCanvas.width + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min(document.body.clientHeight - 8, (originalCanvas.height + 2) * (pixelSize + 1));
         }
         else//使用单个图块的尺寸
         {
-            viewCanvas.width = Math.min(window.innerWidth - scrollbarWidth - 4, (pieceSize + 2) * (pixelSize + 1));
-            viewCanvas.height = Math.min(window.innerHeight - 8, (pieceSize + 2) * (pixelSize + 1));
+            viewCanvas.width = Math.min(document.body.clientWidth - scrollbarWidth - 4, (pieceSize + 2) * (pixelSize + 1));
+            viewCanvas.height = Math.min(document.body.clientHeight - 8, (pieceSize + 2) * (pixelSize + 1));
         }
     }
 
