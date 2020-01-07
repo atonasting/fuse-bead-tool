@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拼豆辅助工具</title>
+    <title>Fuse Bead Tool</title>
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" href="image/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="57x57" href="image/apple-touch-icon-57x57.png" />
@@ -76,11 +76,11 @@
 <body>
     <div class="card">
         <div class="h3 card-header">
-            <label>拼豆辅助工具</label>
+            <label>Fuse Bead Tool</label>
             <div class="float-right mx-2" class='align-top'>
-                <a class="h5" href="/index-en.html">English</a>
+                <a class="h5" href="/">中文</a>
                 <a href="https://www.zhihu.com/people/aton" target="_blank">
-                    <img src='image/sulian.jpg' title='by 苏莉安' style='height: 2rem;' />
+                    <img src='image/sulian.jpg' title='by aton(苏莉安)' style='height: 2rem;' />
                 </a>
                 <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank">
                     <img src='image/GitHub-Mark-64px.png' style='height: 2rem;' />
@@ -91,7 +91,7 @@
             <form>
                 <div class="form-group">
                     <div class="row">
-                        <label class="col-sm-2 col-form-label">选择图片：</label>
+                        <label class="col-sm-2 col-form-label">Choose file：</label>
                         <div class="custom-file col-sm-6">
                             <input type="file" class="custom-file-input" id="imageChooser"
                                 accept="image/png, image/jpeg, image/gif" />
@@ -101,7 +101,7 @@
                 </div>
                 <div class="form-group">
                     <div class="row">
-                        <label class="col-sm-2 col-form-label">图块大小：</label>
+                        <label class="col-sm-2 col-form-label">Piece size：</label>
                         <select id="pieceSizeSelect" class="form-control col-sm-6">
                             <option value="20">20x20</option>
                             <option value="25">25x25</option>
@@ -119,7 +119,7 @@
             <div class="col">
                 <div class="card">
                     <div class="card-header">
-                        原始图片
+                        Original image
                     </div>
                     <div class="card-body">
                         <canvas id="originalCanvas"></canvas>
@@ -129,7 +129,7 @@
             <div class="col">
                 <div class="card">
                     <div class="card-header">
-                        完整图片
+                        Full image
                     </div>
                     <div class="card-body">
                         <canvas id="fullCanvas"></canvas>
@@ -139,7 +139,7 @@
             <div class="col">
                 <div class="card">
                     <div class="card-header">
-                        图片切块
+                        Image pieces
                     </div>
                     <div class="card-body">
                         <table id='sliceImageContainer' class='table-bordered'>
@@ -154,31 +154,32 @@
                 <div class="dropdown float-right mx-2">
                     <button class="btn btn-outline-danger dropdown-toggle" type="button" id="dropdownColorReplace"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        颜色替换
+                        Color replace
                     </button>
                     <div class="dropdown-menu dropdown-menu-right overflow-auto" aria-labelledby="dropdownColorReplace"
                         style="max-height:800px;">
                         <div class="px-4 py-3">
-                            <button type="button" class="btn btn-danger btn-sm" id="removeAllColorReplace">全部删除</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="removeAllColorReplace">Remove
+                                all</button>
                             <button type="button" class="btn btn-primary btn-sm"
-                                id="showColorReplaceJsonModel">导入/导出</button>
+                                id="showColorReplaceJsonModel">Import/Export</button>
                             <div class="dropdown-divider"></div>
-                            <h6 class="dropdown-header">全体颜色替换列表</h6>
+                            <h6 class="dropdown-header">Color replace list</h6>
                             <table class="table table-sm" style="max-width: 180px;">
                                 <thead>
-                                    <th style="width: 36px;">旧</th>
-                                    <th style="width: 36px;">新</th>
+                                    <th style="width: 36px;">Old</th>
+                                    <th style="width: 36px;">New</th>
                                     <th></th>
                                 </thead>
                                 <tbody id="colorReplaceTable">
                                 </tbody>
                             </table>
-                            <h6 class="dropdown-header">单个像素颜色替换列表</h6>
+                            <h6 class="dropdown-header">Pixel color replace list</h6>
                             <table class="table table-sm" style="min-width: 220px;">
                                 <thead>
-                                    <th>坐标</th>
-                                    <th style="width: 36px;">旧</th>
-                                    <th style="width: 36px;">新</th>
+                                    <th>Coordinate</th>
+                                    <th style="width: 36px;">Old</th>
+                                    <th style="width: 36px;">New</th>
                                     <th></th>
                                 </thead>
                                 <tbody id="pixelColorReplaceTable">
@@ -190,14 +191,14 @@
                 <div class="dropdown float-right mx-2">
                     <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownColorSum"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        颜色统计
+                        Color count
                     </button>
                     <div class="dropdown-menu dropdown-menu-right overflow-auto" aria-labelledby="dropdownColorSum"
                         id="colorSum" style="max-height:600px;min-width: 180px;">
                         <table class="table table-sm">
                             <thead>
-                                <th style="width: 36px;">颜色</th>
-                                <th>数量</th>
+                                <th style="width: 36px;">Color</th>
+                                <th>Count</th>
                                 <th></th>
                             </thead>
                             <tbody id="colorSumTable">
@@ -207,7 +208,7 @@
                 </div>
                 <div class="float-right mx-2" id="brushToolBar">
                     <label id='brushInfo'></label>
-                    <button type="button" class="btn btn-danger" id="disableBrushMode">退出</button>
+                    <button type="button" class="btn btn-danger" id="disableBrushMode">Exit brush mode</button>
                 </div>
             </div>
             <div class="card-body" style='padding: 0;'>
@@ -228,15 +229,15 @@
                     <div>
                         <div id="colorInfo"> </div>
                         <hr />
-                        <button type="button" class="btn btn-primary" id='showSingleColor'>只显示此颜色</button>
+                        <button type="button" class="btn btn-primary" id='showSingleColor'>Show this color only</button>
                         <hr />
-                        <strong>颜色替换：</strong>
+                        <strong>Color replace:</strong>
                         <div id="colorSelector">
                         </div>
                         <div id='colorToolBar' class='row justify-content-around py-3'>
-                            <button type="button" class="btn btn-primary" id='replaceColor'>替换所有颜色</button>
-                            <button type="button" class="btn btn-primary" id='replacePixel'>只替换此像素点</button>
-                            <button type="button" class="btn btn-info" id='replacePixelBrush'>进入笔刷模式</button>
+                            <button type="button" class="btn btn-primary" id='replaceColor'>Replace all color</button>
+                            <button type="button" class="btn btn-primary" id='replacePixel'>Replace this pixel</button>
+                            <button type="button" class="btn btn-info" id='replacePixelBrush'>Enter brush mode</button>
                         </div>
                     </div>
                 </div>
@@ -247,26 +248,27 @@
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">导入/导出颜色替换配置</h5>
+                    <h5 class="modal-title">Import/Export color replace data</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <label>颜色替换配置:</label>
+                    <label>Color replace data</label>
                     <textarea class="form-control" rows="10" id="colorReplaceJson"></textarea>
                     <div id="copySuccessAlert" class="alert alert-success">
                         <a href="#" class="close" data-dismiss="alert">&times;</a>
-                        复制成功！
+                        Copied！
                     </div>
                     <div id="importErrorAlert" class="alert alert-warning">
                         <a href="#" class="close" data-dismiss="alert">&times;</a>
-                        导入格式错误！
+                        Data format error！
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-primary" id="copyColorReplaceJson">复制到剪贴板</button>
-                    <button type="button" class="btn btn-primary" id="importColorReplaceJson">导入</button>
+                    <button type="button" class="btn btn-outline-primary" id="copyColorReplaceJson">Copy to
+                        clipboard</button>
+                    <button type="button" class="btn btn-primary" id="importColorReplaceJson">Import</button>
                 </div>
             </div>
         </div>
@@ -280,7 +282,7 @@
                         <div class="spinner-border text-dark m-3" role="status">
                             <span class="sr-only"></span>
                         </div>
-                        <span class="h1"> 绘制中...</span>
+                        <span class="h1"> Drawing...</span>
                     </div>
                 </div>
             </div>
@@ -369,7 +371,7 @@
                     image.src = e.target.result;
                     image.onload = function (e) {
                         if (this.width > imageSizeLimit || this.height > imageSizeLimit) {
-                            alert('图片分辨率' + this.width + 'x' + this.height + '过大，需小于' + imageSizeLimit + 'x' + imageSizeLimit);
+                            alert('Image size: ' + this.width + 'x' + this.height + ' is too large，must less than ' + imageSizeLimit + 'x' + imageSizeLimit);
                             return;
                         }
                         showLoadingMask(() => {
@@ -440,9 +442,9 @@
                 $('#colorSelector>div.selected').removeClass('selected');
                 $(this).addClass('selected');
                 //修改按钮标签
-                $('#replaceColor').html('所有' + selectedPixel.name + '换成' + $(this).html());
-                $('#replacePixel').html('此像素换成' + $(this).html());
-                $('#replacePixelBrush').html('使用' + $(this).html() + '笔刷');
+                $('#replaceColor').html('All ' + selectedPixel.name + ' -> ' + $(this).html());
+                $('#replacePixel').html('This pixel -> ' + $(this).html());
+                $('#replacePixelBrush').html('Use ' + $(this).html() + ' brush');
                 $('#colorToolBar').css('visibility', 'visible');
 
                 $('#replacePixel').val($(this).attr('color'));
@@ -477,7 +479,7 @@
                 $('#colorModal').modal('hide');
                 isBrushMode = true;
                 brushColor = this.value;
-                $('#brushInfo').html("笔刷模式:<div class='colorBlock' style='color:" + getFontColor(brushColor) + "; background:#" + brushColor + ";'>" + paletteMap.get(brushColor).name + "</div>");
+                $('#brushInfo').html("Brush mode:<div class='colorBlock' style='color:" + getFontColor(brushColor) + "; background:#" + brushColor + ";'>" + paletteMap.get(brushColor).name + "</div>");
                 $('#brushToolBar').show();
             });
 
@@ -543,7 +545,7 @@
                 try {
                     let jsonObj = JSON.parse(json);
                     if (!jsonObj || !jsonObj.pixelColorReplaceList || !jsonObj.pixelColorReplaceList) {
-                        console.log('json格式错误');
+                        console.log('json format error');
                         $("#importErrorAlert").show().delay(2000).slideUp(200, function () {
                             $(this).hide();
                         });
@@ -693,21 +695,21 @@
         let pointColor = paletteMap.get(pointColorHex);
         if (sourceColorHex == pointColorHex) {
             //未换色的情况
-            $('#colorInfo').html(" <strong>颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
+            $('#colorInfo').html(" <strong>Color</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
                 + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex);
         }
         else {
             //换色的情况
             let sourceColor = paletteMap.get(sourceColorHex);
-            $('#colorInfo').html(" <strong>当前颜色</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
+            $('#colorInfo').html(" <strong>Current color</strong><div class='colorBlock' style='color:" + getFontColor(pointColorHex)
                 + "; background:#" + pointColorHex + ";'>" + pointColor.name + "</div>#" + pointColorHex
-                + " <strong>原始颜色</strong><div class='colorBlock' style='color:" + getFontColor(sourceColorHex)
+                + " <strong>Original color</strong><div class='colorBlock' style='color:" + getFontColor(sourceColorHex)
                 + "; background:#" + sourceColorHex + ";'>" + sourceColor.name + "</div>#" + sourceColorHex);
         }
 
         selectedPixel = { x: pointX, y: pointY, color: pointColorHex, name: pointColor.name };
-        $('#showSingleColor').html('只显示' + colorSum.get(pointColorHex) + '个' + pointColor.name);
-        $('#pointDialogTitle').html("<strong>大图坐标</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")");
+        $('#showSingleColor').html('Only show ' + colorSum.get(pointColorHex) + ' ' + pointColor.name);
+        $('#pointDialogTitle').html("<strong>Full coordinate</strong>(" + (pointX + 1) + "," + (pointY + 1) + ")");
         $('#colorToolBar').css('visibility', 'hidden');//占位隐藏工具栏
         $('#colorModal').modal('show');
     }
@@ -967,11 +969,11 @@
         let colorSumSorted = new Map([...colorSum.entries()].sort(function (a, b) {
             return b[1] - a[1];
         }));
-        let sumHtml = '<tr><td>合计</td><td>' + totolBeadCount + '</td><td></td></tr>';
+        let sumHtml = '<tr><td>Total</td><td>' + totolBeadCount + '</td><td></td></tr>';
         for (let [color, count] of colorSumSorted) {
             sumHtml += '<tr><td style="background:#' + color + ';color:' + getFontColor(color) + ';">' + paletteMap.get(color).name + '</td><td>' + count + '</td>';
             if (color != 'Err')
-                sumHtml += '<td><button type="button" class="btn btn-primary btn-sm filterColor" title="只显示所有' + paletteMap.get(color).name + '" value=' + color + '>&lt;&lt;</button></td></tr>';
+                sumHtml += '<td><button type="button" class="btn btn-primary btn-sm filterColor" title="Only show ' + paletteMap.get(color).name + '" value=' + color + '>&lt;&lt;</button></td></tr>';
             else
                 sumHtml += '<td></td></tr>';
         }
@@ -987,11 +989,11 @@
         });
 
         let infoHtml = currentSliceImage ?
-            "图块(" + (currentSliceImage.y + 1) + "," + (currentSliceImage.x + 1) + ") ,(" + pieceSize + "x" + pieceSize + ")"
-            : "全图(" + fullCanvas.width + "x" + fullCanvas.height + ")";
+            "Piece(" + (currentSliceImage.y + 1) + "," + (currentSliceImage.x + 1) + ") ,(" + pieceSize + "x" + pieceSize + ")"
+            : "Full image(" + fullCanvas.width + "x" + fullCanvas.height + ")";
         if (filterColor) {
-            infoHtml += "(只显示<div class='colorBlock' style='background:#" + filterColor + ";color:" + getFontColor(filterColor) + ";'>"
-                + paletteMap.get(filterColor).name + "</div>, 点击大图显示全部)";
+            infoHtml += "(Only show<div class='colorBlock' style='background:#" + filterColor + ";color:" + getFontColor(filterColor) + ";'>"
+                + paletteMap.get(filterColor).name + "</div>, Click image show all colors)";
         }
         //显示大图摘要说明
         $('#largePicInfo').html(infoHtml);
@@ -1191,7 +1193,7 @@
             pixelColorReplaceHtml += '<tr><td>' + positionText + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.old + ';color:' + getFontColor(colors.old) + ';">' + paletteMap.get(colors.old).name + '</td>';
             pixelColorReplaceHtml += '<td style="background:#' + colors.new + ';color:' + getFontColor(colors.new) + ';">' + paletteMap.get(colors.new).name + '</td>';
-            pixelColorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-pixel-color-replace" value=' + position + '>删除</button></td></tr>';
+            pixelColorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-pixel-color-replace" value=' + position + '>Remove</button></td></tr>';
         }
         $('#pixelColorReplaceTable').html(pixelColorReplaceHtml);
 
@@ -1199,7 +1201,7 @@
         for (let [oldColor, newColor] of colorReplaceList) {
             colorReplaceHtml += '<tr><td style="background:#' + oldColor + ';color:' + getFontColor(oldColor) + ';">' + paletteMap.get(oldColor).name + '</td>';
             colorReplaceHtml += '<td style="background:#' + newColor + ';color:' + getFontColor(newColor) + ';">' + paletteMap.get(newColor).name + '</td>';
-            colorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-color-replace" value=' + oldColor + '>删除</button></td></tr>';
+            colorReplaceHtml += '<td><button type="button" class="btn btn-danger btn-sm remove-color-replace" value=' + oldColor + '>Remove</button></td></tr>';
         }
         $('#colorReplaceTable').html(colorReplaceHtml);
 
