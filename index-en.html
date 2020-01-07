@@ -5,16 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuse Bead Tool</title>
-    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
-    <link rel="apple-touch-icon" href="image/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="57x57" href="image/apple-touch-icon-57x57.png" />
-    <link rel="apple-touch-icon" sizes="72x72" href="image/apple-touch-icon-72x72.png" />
-    <link rel="apple-touch-icon" sizes="76x76" href="image/apple-touch-icon-76x76.png" />
-    <link rel="apple-touch-icon" sizes="114x114" href="image/apple-touch-icon-114x114.png" />
-    <link rel="apple-touch-icon" sizes="120x120" href="image/apple-touch-icon-120x120.png" />
-    <link rel="apple-touch-icon" sizes="144x144" href="image/apple-touch-icon-144x144.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="image/apple-touch-icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="image/apple-touch-icon-180x180.png" />
+    <link rel="shortcut icon" href="/image/favicon.png" type="image/png">
     <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
         body {
@@ -78,11 +69,9 @@
         <div class="h3 card-header">
             <label>Fuse Bead Tool</label>
             <div class="float-right mx-2" class='align-top'>
-                <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank"
-                    title="Source code and user guide">
-                    <img src='image/GitHub-Mark-64px.png' style='height: 2rem;' />
-                </a>
-                <a class="h6" href="/">中文</a>
+                <img src='image/help.png' style='height: 2rem;' data-toggle="modal" data-target="#docModal"
+                    title="User guide" />
+                <span class="h6"><a href="/">中文</a>/English</span>
             </div>
         </div>
         <div class="card-body">
@@ -267,6 +256,54 @@
                     <button type="button" class="btn btn-outline-primary" id="copyColorReplaceJson">Copy to
                         clipboard</button>
                     <button type="button" class="btn btn-primary" id="importColorReplaceJson">Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="docModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">User guide</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>This web tool is a helper for making fuse beads. It builds on HTML5+JS so can use on PC or mobile
+                        phone. </p>
+                    <p>User guide:</p>
+                    <p>
+                        <ul>
+                            <li>Upload local image, each pixel will convert to similar color of beads and zoom in for
+                                your consult.</li>
+                            <li>Image size limit is 500x500, strongly recommend PNG format than JPEG.</li>
+                            <li>Image will be cut into smaller size pieces. Click piece or full image to swap the large
+                                image shown.</li>
+                            <li>"Color count" button on toolbar used to show each count of colors.</li>
+                            <li>Two way to show some color only: click the large pixel to show a dialog; or press the
+                                &lt;&lt; on "Color count" button.</li>
+                            <li>Click the large pixel show a dialog to change colors, there's 3 type:
+                                <ul>
+                                    <li>Change one color to another;</li>
+                                    <li>Change this pixel to another color;</li>
+                                    <li>Use brush mode to draw color on large image;</li>
+                                </ul>
+                            </li>
+                            <li>"Color replace" button on toolbar used to show the color or pixels you have replaced.
+                                You can import/export the whole list for large fuse bead project.</li>
+                        </ul>
+                    </p>
+                    <p>Current fuse bead color palette is refer to <b>Mard</b> bead, I would append more brand palettes
+                        for choose.</p>
+                    <p class="text-info">Last update on Jan 7, 2020</p class="text-info">
+                    <p class="text-right">
+                        by aton
+                        <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank">
+                            <img src='image/GitHub-Mark-64px.png' style='height: 2rem;'
+                                title="Visit my Github for latest source code" />
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>

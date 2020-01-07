@@ -5,16 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拼豆辅助工具</title>
-    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
-    <link rel="apple-touch-icon" href="image/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="57x57" href="image/apple-touch-icon-57x57.png" />
-    <link rel="apple-touch-icon" sizes="72x72" href="image/apple-touch-icon-72x72.png" />
-    <link rel="apple-touch-icon" sizes="76x76" href="image/apple-touch-icon-76x76.png" />
-    <link rel="apple-touch-icon" sizes="114x114" href="image/apple-touch-icon-114x114.png" />
-    <link rel="apple-touch-icon" sizes="120x120" href="image/apple-touch-icon-120x120.png" />
-    <link rel="apple-touch-icon" sizes="144x144" href="image/apple-touch-icon-144x144.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="image/apple-touch-icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="image/apple-touch-icon-180x180.png" />
+    <link rel="shortcut icon" href="/image/favicon.png" type="image/png">
     <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
         body {
@@ -78,10 +69,9 @@
         <div class="h3 card-header">
             <label>拼豆辅助工具</label>
             <div class="float-right mx-2" class='align-top'>
-                <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank" title="去Github查看源代码和使用指南">
-                    <img src='image/GitHub-Mark-64px.png' style='height: 2rem;' />
-                </a>
-                <a class="h6" href="/index-en.html">English</a>
+                <img src='image/help.png' style='height: 2rem;' data-toggle="modal" data-target="#docModal"
+                    title="帮助文档" />
+                <span class="h6">中文/<a href="/index-en.html">English</a></span>
             </div>
         </div>
         <div class="card-body">
@@ -264,6 +254,47 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-primary" id="copyColorReplaceJson">复制到剪贴板</button>
                     <button type="button" class="btn btn-primary" id="importColorReplaceJson">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="docModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">使用说明</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>本程序为辅助拼豆（Fuse Bead）的制作而开发的辅助工具。以网页形式运行，基于HTML5+JS，所有图形算法均在前端实现。 </p>
+                    <p>操作指南： </p>
+                    <p>
+                        <ul>
+                            <li>可以上传本地图片，将每个像素转换成为相近颜色的拼豆并放大，供实际拼豆时参考；</li>
+                            <li>图片限制尺寸为500x500，建议使用PNG格式；</li>
+                            <li>可以将图片切分成不同尺寸的图块，点击上方图块或全图可以切换放大部分；</li>
+                            <li>大图上方的“颜色统计”按钮可以查看所有颜色的拼豆数量；</li>
+                            <li>可以只显示某种颜色用于快速摆放拼豆，一种方式是点击大图上的像素在弹出对话框中操作，另一种是在颜色统计按钮中直接点击颜色旁边的&lt;&lt;按钮；</li>
+                            <li>点击大图上的像素，可以在弹出对话框中选择替换颜色，有三种方法：
+                                <ul>
+                                    <li>替换所有颜色为另一种颜色； </li>
+                                    <li>替换当前像素为另一种颜色； </li>
+                                    <li>使用笔刷模式在大图上批量修改颜色；</li>
+                                </ul>
+                            </li>
+                            <li>大图上方的“颜色替换”按钮可以查看并删除所有已替换的颜色，也可以导入/导出所有替换列表，方便制作大型拼豆项目。</li>
+                        </ul>
+                    </p>
+                    <p>当前的拼豆调色板来自于<b>Mard</b>品牌的拼豆，将来可能会更新其他品牌供选择。 </p>
+                    <p class="text-info">最后更新时间：2020.1.7</p class="text-info">
+                    <p class="text-right">
+                        by <a href="https://www.zhihu.com/people/aton" target="_blank"> 苏莉安 </a>
+                        <a href="https://github.com/atonasting/fuse-bead-tool" target="_blank">
+                            <img src='image/GitHub-Mark-64px.png' style='height: 2rem;' title="访问Github查看最新源代码" />
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>
