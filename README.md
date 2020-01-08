@@ -16,7 +16,7 @@
   - 替换当前像素为另一种颜色；
   - 使用笔刷模式在大图上批量修改颜色；
 - 大图上方的“颜色替换”按钮可以查看并删除所有已替换的颜色，也可以导入/导出所有替换列表，方便制作大型拼豆项目；
-- 当前的拼豆调色板来自于Mard品牌的拼豆，将来可能会更新其他品牌供选择。
+- 当前的拼豆调色板默认为Mard品牌的融合豆，并增加了国外几个较主流品牌的颜色作为参考。
 
 本文档会随版本升级进行更新。
 
@@ -39,6 +39,6 @@ User guide:
   - Change this pixel to another color;
   - Use brush mode to draw color on large image;
 - "Color replace" button on toolbar used to show the color or pixels you have replaced. You can import/export the whole list for large fuse bead project.
-- Current fuse bead color palette is refer to **Mard** bead, I would append more brand palettes for choose.
+- You can choose some popular brands of bead palettes.
 
 This guide will update at any time. Any suggest are welcomed.
