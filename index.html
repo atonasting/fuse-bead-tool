@@ -29,7 +29,7 @@
             line-height: 24px;
             margin: 2px;
             vertical-align: top;
-            font: 12px monospace;
+            font: 11px monospace;
             border: 1px solid #060606;
         }
 
@@ -58,7 +58,7 @@
         }
     </style>
 
-    <script src="js/palette.v1.js"></script>
+    <script src="js/palette.v2.js"></script>
     <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.4.1.min.js"></script>
     <script src="js/popper.min.js"></script>
     <script src='https://ajax.aspnetcdn.com/ajax/bootstrap/4.3.1/bootstrap.min.js'></script>
@@ -71,7 +71,7 @@
             <div class="float-right mx-2" class='align-top'>
                 <img src='image/help.png' style='height: 2rem;' data-toggle="modal" data-target="#docModal"
                     title="帮助文档" />
-                <span class="h6">中文/<a href="/index-en.html">English</a></span>
+                <span class="h6">中文/<a href="/index-en.html">Eng</a></span>
             </div>
         </div>
         <div class="card-body">
@@ -79,7 +79,7 @@
                 <div class="form-group">
                     <div class="row">
                         <label class="col-sm-2 col-form-label">选择图片：</label>
-                        <div class="custom-file col-sm-6">
+                        <div class="custom-file col-sm-4">
                             <input type="file" class="custom-file-input" id="imageChooser"
                                 accept="image/png, image/jpeg, image/gif" />
                             <label class="custom-file-label" for="imageChooser"></label>
@@ -88,8 +88,24 @@
                 </div>
                 <div class="form-group">
                     <div class="row">
+                        <label class="col-sm-2 col-form-label">拼豆品牌：</label>
+                        <select id="paletteSelect" class="form-control col-sm-4">
+                            <option value="mard" selected>Mard融合豆</option>
+                            <option value="hama">Hama</option>
+                            <option value="perler">Perler 5mm</option>
+                            <option value="perler-mini">Perler mini 2.6mm</option>
+                            <option value="nabbi">Nabbi</option>
+                            <option value="artkal-s">Artkal S 5mm</option>
+                            <option value="artkal-r">Artkal R soft 5mm</option>
+                            <option value="artkal-c">Artkal C 2.6mm</option>
+                            <option value="artkal-a">Artkal A soft 2.6mm</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="row">
                         <label class="col-sm-2 col-form-label">图块大小：</label>
-                        <select id="pieceSizeSelect" class="form-control col-sm-6">
+                        <select id="pieceSizeSelect" class="form-control col-sm-4">
                             <option value="20">20x20</option>
                             <option value="25">25x25</option>
                             <option value="30">30x30</option>
@@ -324,7 +340,7 @@
 
     var pieceSize = 40;//单块拼板容纳的拼豆数
 
-    var paletteMap = generatePaletteMap(mardPalette),//调色板对象集合
+    var paletteMap = generatePaletteMap(allPalettes.get("mard")),//调色板对象
         similarColorCache = new Map(),//与实际颜色最相近的调色板颜色缓存
         paletteImageData = new Array(),//存储原始图片替换调色板颜色后的原图
         sliceImages = new Array(),//存储所有切块图的二维数组
@@ -360,14 +376,8 @@
             fullCanvas = document.getElementById('fullCanvas'),//完整图片canvas
             viewCanvas = document.getElementById('viewCanvas');//视图（可拖拽点击）canvas
 
-        //显示调色板选色块
-        let colorSelectorHtml = '';
-        for (let color of paletteMap.values()) {
-            let fontColor = getFontColor(color.r, color.g, color.b);
-            let hex = rgbToHex(color.r, color.g, color.b);
-            colorSelectorHtml += "<div class='colorBlock pointer' style='background:#" + hex + ";color:" + fontColor + ";' color='" + hex + "' title='#" + hex + "'>" + color.name + "</div>";
-        }
-        $('#colorSelector').html(colorSelectorHtml);
+        //显示调色板选色器
+        generateColorSelectorHtml();
 
         $('#brushToolBar').hide();
 
@@ -438,6 +448,37 @@
                 reader.readAsDataURL(imageFile);
             });
 
+            //拼豆品牌变化
+            $('#paletteSelect').change(function (e) {
+                if (this.value && allPalettes.has(this.value)) {
+                    paletteMap = generatePaletteMap(allPalettes.get(this.value));//重新加载调色板
+                    //刷新调色板选色器   
+                    generateColorSelectorHtml();
+                    if (!$('#mainContent').is(':hidden')) {
+                        showLoadingMask(() => {
+                            //刷新调色板的完整操作步骤：
+                            //清空缓存和各种信息
+                            similarColorCache = new Map();
+                            paletteImageData = new Array();
+                            sliceImages = new Array();
+                            currentSliceImage = null;
+                            largeCanvasOffsetX = 0;
+                            largeCanvasOffsetY = 0;
+                            colorReplaceList = new Map();
+                            pixelColorReplaceList = new Map();
+                            refreshColorReplaceList();
+
+                            //将原图颜色换成最相近的调色板颜色
+                            toPaletteColor(originalCanvas, fullCanvas);
+                            //将完整图片切成图块
+                            sliceCanvasToImage(fullCanvas, 'sliceImageContainer');
+                            //显示完整图片对应的马赛克大图
+                            showFullImageView();
+                        });
+                    }
+                }
+            });
+
             //拼板尺寸变化
             $('#pieceSizeSelect').change(function (e) {
                 if (this.value && parseInt(this.value)) {
@@ -461,21 +502,6 @@
                 $('#colorModal').modal('hide');
                 filterColor = selectedPixel.color;
                 refreshImage();
-            });
-
-            //选色器点击
-            $('#colorSelector>div').on('click tap', function (e) {
-                $('#colorSelector>div.selected').removeClass('selected');
-                $(this).addClass('selected');
-                //修改按钮标签
-                $('#replaceColor').html('所有' + selectedPixel.name + '换成' + $(this).html());
-                $('#replacePixel').html('此像素换成' + $(this).html());
-                $('#replacePixelBrush').html('使用' + $(this).html() + '笔刷');
-                $('#colorToolBar').css('visibility', 'visible');
-
-                $('#replacePixel').val($(this).attr('color'));
-                $('#replaceColor').val($(this).attr('color'));
-                $('#replacePixelBrush').val($(this).attr('color'));
             });
 
             //替换单个像素按钮点击
@@ -919,7 +945,7 @@
 
         largeCanvas.width = imageData.width * (pixelSize + 1);
         largeCanvas.height = imageData.height * (pixelSize + 1);
-        largeCtx.font = (~~(pixelSize / 2) + 1) + 'px monospace';
+        largeCtx.font = (~~(pixelSize / 2)) + 'px monospace';
         largeCtx.strokeStyle = '#000';
         largeCtx.textBaseline = 'middle';
         largeCtx.textAlign = 'center';
@@ -1344,6 +1370,32 @@
             });
         }
         return map;
+    }
+
+    //生成调色板选色块的HTML代码
+    function generateColorSelectorHtml() {
+        let colorSelectorHtml = '';
+        for (let color of paletteMap.values()) {
+            let fontColor = getFontColor(color.r, color.g, color.b);
+            let hex = rgbToHex(color.r, color.g, color.b);
+            colorSelectorHtml += "<div class='colorBlock pointer' style='background:#" + hex + ";color:" + fontColor + ";' color='" + hex + "' title='#" + hex + "'>" + color.name + "</div>";
+        }
+        $('#colorSelector').html(colorSelectorHtml);
+
+        //选色块点击事件
+        $('#colorSelector>div').on('click tap', function (e) {
+            $('#colorSelector>div.selected').removeClass('selected');
+            $(this).addClass('selected');
+            //修改按钮标签
+            $('#replaceColor').html('所有' + selectedPixel.name + '换成' + $(this).html());
+            $('#replacePixel').html('此像素换成' + $(this).html());
+            $('#replacePixelBrush').html('使用' + $(this).html() + '笔刷');
+            $('#colorToolBar').css('visibility', 'visible');
+
+            $('#replacePixel').val($(this).attr('color'));
+            $('#replaceColor').val($(this).attr('color'));
+            $('#replacePixelBrush').val($(this).attr('color'));
+        });
     }
 
     //十六进制颜色转rgb数值
